@@ -1,6 +1,26 @@
 #pragma once
 
+#include <array>
 #include <QtGlobal>
+#include <QElapsedTimer>
+
+
+enum class DebugTrackLevel : unsigned {
+    DEBUG = 1,
+    INFO
+};
+
+enum class DebugTimeTracks : unsigned {
+    GAME_UPDATE = 0,
+    AI_UPDATE,
+
+    TOTAL_TRACKS
+};
+
+enum class DebugCallTracks : unsigned {
+    GAME_UPDATE = 0,
+    TOTAL_TRACKS
+};
 
 class Debug {
 public:
@@ -9,39 +29,47 @@ public:
         return instance;
     }
 
-    void resetTimers() {
-        gameUpdate = 0;
-        getChildTime = 0;
-        updateStatusTime = 0;
-        nodeSelectionTime = 0;
-        moveGenerationTime = 0;
-        simulationBoardTime = 0;
-        backpropagateTime = 0;
-        fieldMoveTime = 0;
-        randomMoveTime = 0;
-        selectTime = 0;
-        exploreTime = 0;
-        simulationTime = 0;
-        selectVisits = 0;
-        exploreVisits = 0;
-        simulationVisits = 0;
+    Debug();
+    virtual ~Debug() {
+        if (_timer) {
+            delete _timer;
+            _timer = nullptr;
+        }
     }
 
-public:
-    qint64 gameUpdate;
-    qint64 getChildTime;
-    qint64 updateStatusTime;
-    qint64 fieldMoveTime;
-    qint64 moveGenerationTime;
-    qint64 nodeSelectionTime;
-    qint64 randomMoveTime;
-    qint64 selectTime;
-    qint64 exploreTime;
-    qint64 simulationTime;
-    qint64 simulationBoardTime;
-    qint64 backpropagateTime;
+    void registerTimeTrackName(DebugTimeTracks track, std::string trackName) { _timeTrackNames[static_cast<unsigned>(track)] = trackName; }
+    void registerCallTrackName(DebugCallTracks track, std::string trackName) { _callTrackNames[static_cast<unsigned>(track)] = trackName; }
 
-    unsigned selectVisits = 0;
-    unsigned exploreVisits = 0;
-    unsigned simulationVisits = 0;
+    void setTimeTrackDebugLevel(DebugTimeTracks track, DebugTrackLevel level) { _timeTracksDebugLevel[static_cast<unsigned>(track)] = static_cast<unsigned>(level); }
+    void setCallTrackDebugLevel(DebugCallTracks track, DebugTrackLevel level) { _callTracksDebugLevel[static_cast<unsigned>(track)] = static_cast<unsigned>(level); }
+
+    void startTrack(DebugTimeTracks track);
+    void stopTrack(DebugTimeTracks track);
+    void trackCall(DebugCallTracks track);
+
+    void resetStats();
+    void printStats(DebugTrackLevel);
+
+    qint64 getTrackStats(DebugTimeTracks track) const { return _tracksTime[static_cast<unsigned>(track)]; }
+    qint64 getCallStats(DebugCallTracks track) const { return _callTracks[static_cast<unsigned>(track)]; }
+
+
+private:
+    static constexpr unsigned TRACKS_COUNT = 32;
+
+    std::array<qint64, TRACKS_COUNT> _tracksStart;
+    std::array<qint64, TRACKS_COUNT> _tracksEnd;
+    std::array<qint64, TRACKS_COUNT> _tracksTime;
+    std::array<qint64, TRACKS_COUNT> _callTracks;
+
+    std::array<bool, TRACKS_COUNT> _trackedTimeTracks;
+    std::array<bool, TRACKS_COUNT> _trackedCallTracks;
+
+    std::array<std::string, TRACKS_COUNT> _timeTrackNames;
+    std::array<std::string, TRACKS_COUNT> _callTrackNames;
+
+    std::array<unsigned, TRACKS_COUNT> _timeTracksDebugLevel;
+    std::array<unsigned, TRACKS_COUNT> _callTracksDebugLevel;
+
+    QElapsedTimer* _timer = nullptr;
 };

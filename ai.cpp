@@ -6,7 +6,12 @@
 #include <QDebug>
 #include <QElapsedTimer>
 
-#define PRUNE_HANGING_NODES 1
+enum class NodePruneStrategy {
+    NONE,
+    HARD,
+    SOFT
+} NODE_PRUNE_STRATEGY = NodePruneStrategy::SOFT;
+constexpr unsigned NODE_VISIT_FOR_SAFE_DELETE = 8;
 
 MCTNode::MCTNode() {
 
@@ -37,16 +42,12 @@ bool MCTNode::hasChild(short hashedMove) const {
 }
 
 MCTNode* MCTNode::getChild(short hashedMove) const {
-    QElapsedTimer timerMain;
-    timerMain.start();
     for (auto& child : _children) {
         if (child->getPosition() == hashedMove) {
-            Debug::getInstance().getChildTime += timerMain.nsecsElapsed();
             return child;
         }
     }
 
-    Debug::getInstance().getChildTime += timerMain.nsecsElapsed();
     return nullptr;
 }
 
@@ -70,6 +71,8 @@ float MCTNode::getNodeEvaluationScore() const {
 
 void MCTNode::backpropagate(float scores) {
     _scores += scores;
+    scores += _tacticalScore;
+    _tacticalScore = 0.f;
     _nodeVisits++;
 
     if (getColor() == BLACK_PIECE_COLOR) {
@@ -79,7 +82,7 @@ void MCTNode::backpropagate(float scores) {
     }
 
     if (_parent) {
-        _parent->backpropagate(_scores);
+        _parent->backpropagate(scores);
     }
 }
 
@@ -91,11 +94,30 @@ AI::AI(short aiPlayerColor)
 
     _realRoot = new MCTNode();
     _root = _realRoot;
+    _root->setParent(nullptr);
+
+    if (NODE_PRUNE_STRATEGY != NodePruneStrategy::NONE) {
+        _realRoot = nullptr;
+    }
 }
 
 AI::~AI() {
-    _root = nullptr;
-    delete _realRoot;
+    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::NONE) {
+        _root = nullptr;
+        delete _realRoot;
+    } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
+        delete _root;
+        _root = nullptr;
+    } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
+        delete _root;
+        _root = nullptr;
+
+        for (auto& node : _nodesToPrune) {
+            delete node;
+        }
+        _nodesToPrune.clear();
+    }
+
     delete _board;
 }
 
@@ -140,16 +162,63 @@ std::vector<AIMoveData> AI::getPossibleMoves() const {
     return result;
 }
 
+void AI::_partialPrune(MCTNode *node) {
+    if (_nodesToPartialPrune <= 0) {
+        return;
+    }
+
+    for (auto childrenIt = node->getChildren().begin(); childrenIt != node->getChildren().end();) {
+        if ((*childrenIt)->getNodeVisits() < static_cast<unsigned>(_nodesToPartialPrune) || (*childrenIt)->getChildren().empty()) {
+            auto nodeForDelete = (*childrenIt);
+            childrenIt = node->getChildren().erase(childrenIt);
+
+            _nodesToPartialPrune -= nodeForDelete->getNodeVisits();
+            _nodesPruned += nodeForDelete->getNodeVisits();
+            auto parent = nodeForDelete->getParent();
+            while (parent) { parent->_nodeVisits -= nodeForDelete->getNodeVisits(); parent = parent->getParent(); }
+
+            nodeForDelete->setParent(nullptr);
+            delete nodeForDelete;
+        } else {
+            auto nodeToCheck = *childrenIt;
+            ++childrenIt;
+            _partialPrune(nodeToCheck);
+        }
+    }
+}
+
+bool AI::partialPrune(MCTNode* node) {
+    _partialPrune(node);
+    return node->getNodeVisits() == 0 || node->getChildren().empty();
+}
+
 void AI::update() {
+    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT && !_nodesToPrune.empty()) {
+        _nodesToPartialPrune = NODE_VISIT_FOR_SAFE_DELETE;
+        _nodesPruned = 0;
+
+        auto node = _nodesToPrune.front();
+        if (node->getNodeVisits() < NODE_VISIT_FOR_SAFE_DELETE || node->getChildren().empty()) {
+            _nodesToPrune.pop_front();
+            _nodesToPartialPrune -= node->getNodeVisits();
+            _nodesPruned += node->getNodeVisits();
+            node->setParent(nullptr);
+            delete node;
+        } else if (partialPrune(node)) {
+            _nodesToPrune.pop_front();
+            node->setParent(nullptr);
+            delete  node;
+        }
+
+        qDebug() << "Partial prune: " << _nodesToPartialPrune << _nodesPruned;
+    }
+
     if (_board->getFieldStatus() != FieldStatus::IN_PROGRESS) {
         return;
     }
 
-    QElapsedTimer timerMain;
-    timerMain.start();
+    Debug::getInstance().startTrack(DebugTimeTracks::AI_UPDATE);
 
-    QElapsedTimer timerSelect;
-    timerSelect.start();
     Field* field = new Field(*_board);
 
     if (!_root->isExpanded()) {
@@ -159,26 +228,40 @@ void AI::update() {
     select(_root, field);
     delete field;
 
-    qDebug() << "Update time: " << timerMain.elapsed();
+    Debug::getInstance().stopTrack(DebugTimeTracks::AI_UPDATE);
 }
 
 void AI::goToNode(short position) {
     if (_root->hasChild(position)) {
         _root = _root->getChild(position);
-        _realRoot = _root;
         _board->placePiece(_root->getMove());
 
-        auto parent = _root->getParent();
-        _root->setParent(nullptr);
-        auto nodes = parent->getChildren();
-        parent->clearChildren();
-        delete parent;
-        for (auto& node : nodes) {
-            if (node == _root) {
-                continue;
-            }
+        if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
+            auto parent = _root->getParent();
+            _root->setParent(nullptr);
+            auto nodes = parent->getChildren();
+            parent->clearChildren();
+            delete parent;
+            for (auto& node : nodes) {
+                if (node == _root) {
+                    continue;
+                }
 
-            delete node;
+                delete node;
+            }
+        } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
+            auto parent = _root->getParent();
+            _root->setParent(nullptr);
+            auto nodes = parent->getChildren();
+            parent->clearChildren();
+
+            for (auto& node : nodes) {
+                if (node == _root) {
+                    continue;
+                }
+
+                _nodesToPrune.push_back(node);
+            }
         }
         return;
     }
@@ -187,11 +270,17 @@ void AI::goToNode(short position) {
     child->setPosition(position);
     child->setColor(FieldMove::getNextColor(_root->getColor()));
 
-    delete _root;
-//    _root->addChild(child);
+    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
+        delete _root;
+        _root = child;
+    } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
+        _nodesToPrune.push_back(_root);
+        _root = child;
+    } else {
+        _root->addChild(child);
+        _root = child;
+    }
 
-    _root = child;
-    _realRoot = _root;
     _board->placePiece(child->getMove());
 }
 
@@ -214,13 +303,7 @@ void AI::expand(MCTNode* node, Field* field) {
 }
 
 void AI::select(MCTNode* node, Field* field) {
-
-    Debug::getInstance().selectVisits++;
-
     // select best node
-    QElapsedTimer timerMain;
-    timerMain.start();
-
     MCTNode* bestNode = nullptr;
     float bestNodeScores = 0.f;
 
@@ -239,7 +322,6 @@ void AI::select(MCTNode* node, Field* field) {
         }
     }
 
-    Debug::getInstance().selectTime += timerMain.nsecsElapsed();
     node->setExplored(true);
     if (isAllTerminal) {
         node->setTerminal(true);
@@ -250,12 +332,6 @@ void AI::select(MCTNode* node, Field* field) {
 }
 
 void AI::explore(MCTNode* node, Field* field) {
-
-    Debug::getInstance().exploreVisits++;
-
-    QElapsedTimer timerMain1;
-    timerMain1.start();
-
     field->placePiece(node->getMove());
     node->setExplored(true);
 
@@ -264,20 +340,14 @@ void AI::explore(MCTNode* node, Field* field) {
         node->setEndpoint(true);
         node->setTerminal(true);
 
-        Debug::getInstance().exploreTime += timerMain1.nsecsElapsed();
         return;
     }
-
-    QElapsedTimer timerMain;
-    timerMain.start();
 
     auto& moves = field->getAvailableMoves();
     auto rIndex = rand() % moves.size();
     auto moveItr = moves.begin();
     while (rIndex > 0) { moveItr++; rIndex--; }
     auto rMove = *moveItr;
-
-    Debug::getInstance().randomMoveTime += timerMain.nsecsElapsed();
 
     if (node->getChildren().size() == moves.size()) {
         // check if we explored all nodes
@@ -292,7 +362,6 @@ void AI::explore(MCTNode* node, Field* field) {
         if (isAllTerminal) {
             node->setTerminal(true);
 
-            Debug::getInstance().exploreTime += timerMain1.nsecsElapsed();
             return;
         }
     }
@@ -307,8 +376,6 @@ void AI::explore(MCTNode* node, Field* field) {
     }
 
     if (node->hasChild(rMove)) {
-        Debug::getInstance().exploreTime += timerMain1.nsecsElapsed();
-
         explore(node->getChild(rMove), field);
         return;
     }
@@ -318,21 +385,10 @@ void AI::explore(MCTNode* node, Field* field) {
     child->setColor(FieldMove::getNextColor(node->getColor()));
 
     node->addChild(child);
-
-    Debug::getInstance().exploreTime += timerMain1.nsecsElapsed();
     simulatePlayout(child, field);
 }
 
 void AI::simulatePlayout(MCTNode* node, Field* field) {
-
-    Debug::getInstance().simulationVisits++;
-
-    QElapsedTimer timerMain1;
-    timerMain1.start();
-
-    QElapsedTimer timerMain2;
-    timerMain2.start();
-
     field->placePiece(node->getMove());
     node->setExplored(true);
 
@@ -348,22 +404,10 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
             scores = -1.f;
         }
 
-        QElapsedTimer timerMaine;
-        timerMaine.start();
-
         node->backpropagate(scores);
-
-        Debug::getInstance().simulationTime += timerMain1.nsecsElapsed();
-        Debug::getInstance().simulationBoardTime += timerMain2.nsecsElapsed();
-        Debug::getInstance().backpropagateTime += timerMaine.nsecsElapsed();
-
         return;
     }
 
-    Debug::getInstance().simulationBoardTime += timerMain1.nsecsElapsed();
-
-    QElapsedTimer timerMain;
-    timerMain.start();
 
     auto& moves = field->getAvailableMoves();
     auto rIndex = rand() % moves.size(); // not _really_ random
@@ -371,8 +415,6 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
     while (rIndex > 0) { moveItr++; rIndex--; }
 
     auto rMove = *moveItr;
-
-    Debug::getInstance().randomMoveTime += timerMain.elapsed();
 
     if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
         for (auto& move : moves) {
@@ -384,8 +426,6 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
     }
 
     if (node->hasChild(rMove)) {
-        Debug::getInstance().simulationTime += timerMain1.nsecsElapsed();
-
         explore(node->getChild(rMove), field);
         return;
     }
@@ -395,7 +435,5 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
     child->setColor(FieldMove::getNextColor(node->getColor()));
 
     node->addChild(child);
-
-    Debug::getInstance().simulationTime += timerMain1.nsecsElapsed();
     simulatePlayout(child, field);
 }

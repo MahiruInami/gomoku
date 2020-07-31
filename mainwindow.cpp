@@ -30,6 +30,8 @@ MainWindow::MainWindow(QWidget *parent)
     QTimer *timer2 = new QTimer(this);
     connect(timer2, SIGNAL(timeout()), this, SLOT(updateAIField()));
     timer2->start(2000);
+
+    Debug::getInstance().registerTimeTrackName(DebugTimeTracks::GAME_UPDATE, "Update AI");
 }
 
 MainWindow::~MainWindow()
@@ -47,34 +49,16 @@ void MainWindow::updateAI() {
         return;
     }
 
-    Debug::getInstance().resetTimers();
-
-    QElapsedTimer timerMain;
-    timerMain.start();
-    for (int i = 0; i < 1; i++) {
+    Debug::getInstance().resetStats();
+    Debug::getInstance().startTrack(DebugTimeTracks::GAME_UPDATE);
+    for (int i = 0; i < 16; i++) {
         _ai->update();
 
         _totalAiGames++;
         _currentAiGames++;
     }
-    Debug::getInstance().gameUpdate += timerMain.nsecsElapsed();
+    Debug::getInstance().stopTrack(DebugTimeTracks::GAME_UPDATE);
 
-    qDebug() << "update times: ";
-    qDebug() << "G: " << Debug::getInstance().gameUpdate;
-    qDebug() << "S: " << Debug::getInstance().selectTime;
-    qDebug() << "E: " << Debug::getInstance().exploreTime;
-    qDebug() << "I: " << Debug::getInstance().simulationTime;
-    qDebug() << "P: " << Debug::getInstance().simulationBoardTime;
-    qDebug() << "F: " << Debug::getInstance().fieldMoveTime;
-    qDebug() << "B: " << Debug::getInstance().backpropagateTime;
-    qDebug() << "C: " << Debug::getInstance().getChildTime;
-    qDebug() << "R: " << Debug::getInstance().randomMoveTime;
-    qDebug() << "M: " << Debug::getInstance().moveGenerationTime;
-    qDebug() << "U: " << Debug::getInstance().updateStatusTime;
-    qDebug() << Debug::getInstance().nodeSelectionTime;
-    qDebug() << Debug::getInstance().selectVisits;
-    qDebug() << Debug::getInstance().exploreVisits;
-    qDebug() << Debug::getInstance().simulationVisits;
 
     ui->aiTotalGames->setText(QString::number(_totalAiGames));
     ui->aiCurrentGames->setText(QString::number(_currentAiGames));
@@ -102,9 +86,9 @@ void MainWindow::onFieldClick(short x, short y) {
 void MainWindow::updateField() {
     _fieldView->clearPieces();
     std::unordered_set<short> cells;
-    for (auto& piece : _field->getCurrentPieces()) {
-        cells.insert(piece.first);
-        _fieldView->addPiece(FieldMove::getXFromPosition(piece.first) * FieldWidget::IMAGE_SIZE, FieldMove::getYFromPosition(piece.first) * FieldWidget::IMAGE_SIZE, piece.second);
+    for (auto& piece : _field->getMoves()) {
+        cells.insert(piece);
+        _fieldView->addPiece(FieldMove::getXFromPosition(piece) * FieldWidget::IMAGE_SIZE, FieldMove::getYFromPosition(piece) * FieldWidget::IMAGE_SIZE, _field->getBoardState()[piece]);
     }
 
     if (_ai) {

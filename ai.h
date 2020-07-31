@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <list>
 #include "field.h"
 
 struct AIMoveData {
@@ -17,6 +18,8 @@ struct AIMoveData {
 };
 
 class MCTNode {
+public:
+    friend class AI;
 public:
     MCTNode();
     ~MCTNode();
@@ -38,7 +41,7 @@ public:
     void addChild(MCTNode* child);
     bool hasChild(short hashedMove) const;
     MCTNode* getChild(short hashedMove) const;
-    const std::vector<MCTNode*>& getChildren() { return _children; }
+    std::vector<MCTNode*>& getChildren() { return _children; }
     void clearChildren() { _children.clear(); _hashedChildren.clear(); }
 
     void setExplored(bool value) { _isExplored = value; }
@@ -73,6 +76,7 @@ private:
     bool _isWinningNode = false;
 
     float _scores = 0.f;
+    float _tacticalScore = 0.f;
     float _minMaxScore = 0.f;
 
     unsigned _nodeVisits = 0;
@@ -98,10 +102,18 @@ private:
     void select(MCTNode* node, Field* field);
     void explore(MCTNode* node, Field* field);
     void simulatePlayout(MCTNode* node, Field* field);
+
+    bool partialPrune(MCTNode* node);
+    void _partialPrune(MCTNode* node);
 private:
     MCTNode* _root;
     MCTNode* _realRoot;
     Field* _board;
+
+    std::list<MCTNode*> _nodesToPrune;
+    std::list<MCTNode*> _partialPruneQueue;
+    int _nodesToPartialPrune = 0;
+    unsigned _nodesPruned = 0;
 
     short _playerColor;
 };

@@ -66,7 +66,7 @@ void FieldWidget::paintEvent(QPaintEvent* /* event */) {
         }
 
         painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 4), QString::number(aiMove.second.scores, 'f', 2));
-        painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 12), QString::number(aiMove.second.minMaxScores, 'f', 2));
+//        painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 12), QString::number(aiMove.second.minMaxScores, 'f', 2));
         painter.drawText(QPoint(aiMove.second.x + 2, aiMove.second.y + 12), playouts.c_str());
     }
 }

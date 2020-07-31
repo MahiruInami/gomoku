@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ai.cpp \
+    debug.cpp \
     field.cpp \
     fieldwidget.cpp \
     main.cpp \
