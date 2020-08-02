@@ -17,10 +17,11 @@ Field::Field(const Field& field) {
     _board = field._board;
     _currentMoves = field._currentMoves;
     _status = field._status;
+    _winningMoves = field._winningMoves;
 }
 
 
-const std::unordered_set<short>& Field::getAvailableMoves() const {
+const std::unordered_set<short>& Field::getAvailableMoves(short /*color*/) const {
     return _availableMoves;
 }
 

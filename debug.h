@@ -6,8 +6,9 @@
 
 
 enum class DebugTrackLevel : unsigned {
-    DEBUG = 1,
-    INFO
+    DEBUG = 0,
+    INFO,
+    PRODUCTION
 };
 
 enum class DebugTimeTracks : unsigned {
@@ -72,4 +73,5 @@ private:
     std::array<unsigned, TRACKS_COUNT> _callTracksDebugLevel;
 
     QElapsedTimer* _timer = nullptr;
+    bool _isEnabled = false;
 };

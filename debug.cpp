@@ -7,26 +7,44 @@ Debug::Debug() {
 }
 
 void Debug::startTrack(DebugTimeTracks track) {
+    if (!_isEnabled) {
+        return;
+    }
+
     if (!_timer) {
         _timer = new QElapsedTimer();
         _timer->start();
     }
 
-    _tracksStart[static_cast<int>(track)] = _timer->elapsed();
+    _tracksStart[static_cast<int>(track)] = _timer->nsecsElapsed();
 }
 
 void Debug::stopTrack(DebugTimeTracks track) {
-    _tracksEnd[static_cast<int>(track)] = _timer->elapsed();
+    if (!_isEnabled) {
+        return;
+    }
+
+    _tracksEnd[static_cast<int>(track)] = _timer->nsecsElapsed();
 
     _tracksTime[static_cast<int>(track)] += (_tracksEnd[static_cast<int>(track)] - _tracksStart[static_cast<int>(track)]);
+    _trackedTimeTracks[static_cast<int>(track)] = true;
 }
 
 void Debug::trackCall(DebugCallTracks track) {
+    if (!_isEnabled) {
+        return;
+    }
+
     _callTracks[static_cast<int>(track)]++;
+    _trackedCallTracks[static_cast<int>(track)] = true;
 }
 
 
 void Debug::resetStats() {
+    if (!_isEnabled) {
+        return;
+    }
+
     for (unsigned i = 0; i < TRACKS_COUNT; ++i) _tracksStart[i] = 0;
     for (unsigned i = 0; i < TRACKS_COUNT; ++i) _tracksEnd[i] = 0;
     for (unsigned i = 0; i < TRACKS_COUNT; ++i) _tracksTime[i] = 0;
@@ -43,6 +61,10 @@ void Debug::resetStats() {
 }
 
 void Debug::printStats(DebugTrackLevel level) {
+    if (!_isEnabled) {
+        return;
+    }
+
     qDebug() << "Time tracks:";
     for (unsigned i = 0; i < static_cast<unsigned>(DebugTimeTracks::TOTAL_TRACKS); ++i) {
         if (!_trackedTimeTracks[i]) {

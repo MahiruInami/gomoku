@@ -17,19 +17,23 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ai.cpp \
+    aidomainknowledge.cpp \
     debug.cpp \
     field.cpp \
     fieldwidget.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    mctnode.cpp
 
 HEADERS += \
     ai.h \
+    aidomainknowledge.h \
     debug.h \
     field.h \
     fieldwidget.h \
     ifield.h \
-    mainwindow.h
+    mainwindow.h \
+    mctnode.h
 
 FORMS += \
     fieldwidget.ui \

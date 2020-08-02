@@ -13,79 +13,6 @@ enum class NodePruneStrategy {
 } NODE_PRUNE_STRATEGY = NodePruneStrategy::SOFT;
 constexpr unsigned NODE_VISIT_FOR_SAFE_DELETE = 8;
 
-MCTNode::MCTNode() {
-
-}
-
-MCTNode::~MCTNode() {
-    _parent = nullptr;
-    _hashedChildren.clear();
-
-    for (auto& child : _children) {
-        delete child;
-    }
-    _children.clear();
-}
-
-void MCTNode::addChild(MCTNode *child) {
-    if (hasChild(child->getPosition())) {
-        return;
-    }
-
-    child->setParent(this);
-    _children.push_back(child);
-    _hashedChildren.insert(child->getPosition());
-}
-
-bool MCTNode::hasChild(short hashedMove) const {
-    return _hashedChildren.find(hashedMove) != _hashedChildren.end();
-}
-
-MCTNode* MCTNode::getChild(short hashedMove) const {
-    for (auto& child : _children) {
-        if (child->getPosition() == hashedMove) {
-            return child;
-        }
-    }
-
-    return nullptr;
-}
-
-float MCTNode::getNodeSelectionScore() const {
-    if (_nodeVisits == 0) {
-        return 0.f;
-    }
-
-    float visitRatio = _parent ? std::sqrt(std::log(_parent->getNodeVisits()) / _nodeVisits) * 1.4142135f : 0.f;
-    return _scores / _nodeVisits + visitRatio;
-}
-
-
-float MCTNode::getNodeEvaluationScore() const {
-    if (_nodeVisits == 0) {
-        return 0.f;
-    }
-
-    return _scores / _nodeVisits;
-}
-
-void MCTNode::backpropagate(float scores) {
-    _scores += scores;
-    scores += _tacticalScore;
-    _tacticalScore = 0.f;
-    _nodeVisits++;
-
-    if (getColor() == BLACK_PIECE_COLOR) {
-        _minMaxScore = std::max(_minMaxScore, scores);
-    } else {
-        _minMaxScore = std::min(_minMaxScore, scores);
-    }
-
-    if (_parent) {
-        _parent->backpropagate(scores);
-    }
-}
-
 AI::AI(short aiPlayerColor)
     : _playerColor(aiPlayerColor)
 {
@@ -209,8 +136,6 @@ void AI::update() {
             node->setParent(nullptr);
             delete  node;
         }
-
-        qDebug() << "Partial prune: " << _nodesToPartialPrune << _nodesPruned;
     }
 
     if (_board->getFieldStatus() != FieldStatus::IN_PROGRESS) {
@@ -220,13 +145,15 @@ void AI::update() {
     Debug::getInstance().startTrack(DebugTimeTracks::AI_UPDATE);
 
     Field* field = new Field(*_board);
+    AIDomainKnowledge* domainKnowledge = new AIDomainKnowledge(*_domainKnowledge);
 
     if (!_root->isExpanded()) {
-        expand(_root, field);
+        expand(_root, field, domainKnowledge);
     }
 
-    select(_root, field);
+    select(_root, field, domainKnowledge);
     delete field;
+    delete domainKnowledge;
 
     Debug::getInstance().stopTrack(DebugTimeTracks::AI_UPDATE);
 }
@@ -284,8 +211,8 @@ void AI::goToNode(short position) {
     _board->placePiece(child->getMove());
 }
 
-void AI::expand(MCTNode* node, Field* field) {
-    auto& moves = field->getAvailableMoves();
+void AI::expand(MCTNode* node, IField* field, AIDomainKnowledge* /*domainKnowledge*/) {
+    auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
 
     for (auto& move : moves) {
         if (node->hasChild(move)) {
@@ -302,20 +229,24 @@ void AI::expand(MCTNode* node, Field* field) {
     node->setExpanded(true);
 }
 
-void AI::select(MCTNode* node, Field* field) {
+void AI::select(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
     // select best node
     MCTNode* bestNode = nullptr;
     float bestNodeScores = 0.f;
 
 
     bool isAllTerminal = true;
+//    qDebug() << "Select: " << node->getColor() << "xy: " << FieldMove::getXFromPosition(node->getPosition()) << " " << FieldMove::getYFromPosition(node->getPosition());
     for (auto& child : node->getChildren()) {
         if (child->isTerminal()) {
+//            qDebug() << "Skip terminal node: " << child->getColor() << "xy: " << FieldMove::getXFromPosition(child->getPosition()) << " " << FieldMove::getYFromPosition(child->getPosition()) << " " << child->getNodeSelectionScore() << " " << child->getNodeEvaluationScore();
             continue;
         }
 
         isAllTerminal = false;
         float nodeSelectionScores = child->getNodeSelectionScore();
+//        qDebug() << "check Node: " << child->getColor() << "xy: " << FieldMove::getXFromPosition(child->getPosition()) << " " << FieldMove::getYFromPosition(child->getPosition()) << " " << nodeSelectionScores << " " << child->getNodeEvaluationScore();
+//        if (!bestNode || (bestNodeScores < nodeSelectionScores && node->getColor() != _playerColor) || (bestNodeScores > nodeSelectionScores && node->getColor() == _playerColor)) {
         if (!bestNode || bestNodeScores < nodeSelectionScores) {
             bestNode = child;
             bestNodeScores = nodeSelectionScores;
@@ -328,10 +259,11 @@ void AI::select(MCTNode* node, Field* field) {
         return;
     }
 
-    explore(bestNode, field);
+//    qDebug() << "Best node: " << bestNode->getColor() << "xy: " << FieldMove::getXFromPosition(bestNode->getPosition()) << " " << FieldMove::getYFromPosition(bestNode->getPosition()) << " " << bestNode->getNodeSelectionScore() << " " << bestNode->getNodeEvaluationScore();
+    explore(bestNode, field, domainKnowledge);
 }
 
-void AI::explore(MCTNode* node, Field* field) {
+void AI::explore(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
     field->placePiece(node->getMove());
     node->setExplored(true);
 
@@ -343,29 +275,45 @@ void AI::explore(MCTNode* node, Field* field) {
         return;
     }
 
-    auto& moves = field->getAvailableMoves();
-    auto rIndex = rand() % moves.size();
-    auto moveItr = moves.begin();
-    while (rIndex > 0) { moveItr++; rIndex--; }
-    auto rMove = *moveItr;
+//    int pickExisting = rand() % 10;
+//    if (node->isExpanded() || (node->getChildren().size() > 2 && pickExisting < 6)) {
+//        select(node, field);
+//        return;
+//    }
 
+    auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
     if (node->getChildren().size() == moves.size()) {
         // check if we explored all nodes
         bool isAllTerminal = true;
+        bool isExpanded = true;
         for (auto& move : moves) {
-            if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
+            if (!node->hasChild(move)) {
+                isExpanded = false;
                 isAllTerminal = false;
                 break;
+            }
+
+            if (!node->getChild(move)->isTerminal()) {
+                isAllTerminal = false;
             }
         }
 
         if (isAllTerminal) {
             node->setTerminal(true);
+            return;
+        }
 
+        if (isExpanded) {
+            node->setExpanded(true);
+            select(node, field, domainKnowledge);
             return;
         }
     }
 
+    auto rIndex = rand() % moves.size();
+    auto moveItr = moves.begin();
+    while (rIndex > 0) { moveItr++; rIndex--; }
+    auto rMove = *moveItr;
     if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
         for (auto& move : moves) {
             if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
@@ -376,7 +324,7 @@ void AI::explore(MCTNode* node, Field* field) {
     }
 
     if (node->hasChild(rMove)) {
-        explore(node->getChild(rMove), field);
+        explore(node->getChild(rMove), field, domainKnowledge);
         return;
     }
 
@@ -385,10 +333,10 @@ void AI::explore(MCTNode* node, Field* field) {
     child->setColor(FieldMove::getNextColor(node->getColor()));
 
     node->addChild(child);
-    simulatePlayout(child, field);
+    simulatePlayout(child, field, domainKnowledge);
 }
 
-void AI::simulatePlayout(MCTNode* node, Field* field) {
+void AI::simulatePlayout(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
     field->placePiece(node->getMove());
     node->setExplored(true);
 
@@ -404,12 +352,14 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
             scores = -1.f;
         }
 
-        node->backpropagate(scores);
+        node->backpropagate(scores, nullptr);
         return;
     }
 
+    //
 
-    auto& moves = field->getAvailableMoves();
+
+    auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
     auto rIndex = rand() % moves.size(); // not _really_ random
     auto moveItr = moves.begin();
     while (rIndex > 0) { moveItr++; rIndex--; }
@@ -426,7 +376,7 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
     }
 
     if (node->hasChild(rMove)) {
-        explore(node->getChild(rMove), field);
+        explore(node->getChild(rMove), field, domainKnowledge);
         return;
     }
 
@@ -435,5 +385,5 @@ void AI::simulatePlayout(MCTNode* node, Field* field) {
     child->setColor(FieldMove::getNextColor(node->getColor()));
 
     node->addChild(child);
-    simulatePlayout(child, field);
+    simulatePlayout(child, field, domainKnowledge);
 }

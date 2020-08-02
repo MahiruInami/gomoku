@@ -20,6 +20,7 @@ public:
     ~MainWindow();
 public slots:
     void onNewGameStarted();
+    void checkPattern();
     void updateAI();
     void updateAIField();
 private:

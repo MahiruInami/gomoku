@@ -21,6 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
     _field = new Field();
 
     connect(ui->startGameButton, &QPushButton::clicked, this, &MainWindow::onNewGameStarted);
+    connect(ui->showTreeButton, &QPushButton::clicked, this, &MainWindow::checkPattern);
     connect(_fieldView, &FieldWidget::mouseClicked, this, &MainWindow::onFieldClick);
 
     QTimer *timer = new QTimer(this);
@@ -31,7 +32,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timer2, SIGNAL(timeout()), this, SLOT(updateAIField()));
     timer2->start(2000);
 
-    Debug::getInstance().registerTimeTrackName(DebugTimeTracks::GAME_UPDATE, "Update AI");
+    Debug::getInstance().registerTimeTrackName(DebugTimeTracks::GAME_UPDATE, "Update Game");
+    Debug::getInstance().registerCallTrackName(DebugCallTracks::GAME_UPDATE, "Update Game");
+
+
+    Debug::getInstance().registerTimeTrackName(DebugTimeTracks::AI_UPDATE, "Update AI");
+//    Debug::getInstance().registerCallTrackName(DebugCallTracks::AI_UPDATE, "Update AI");
 }
 
 MainWindow::~MainWindow()
@@ -51,14 +57,28 @@ void MainWindow::updateAI() {
 
     Debug::getInstance().resetStats();
     Debug::getInstance().startTrack(DebugTimeTracks::GAME_UPDATE);
-    for (int i = 0; i < 16; i++) {
+
+    qint64 timeLeft = 15 * 1000000;
+    qint64 currentUpdateTime = 0;
+    unsigned updatesCount = 0;
+    QElapsedTimer updateTimer;
+    updateTimer.start();
+
+
+    qint64 updateStartTime = updateTimer.nsecsElapsed();
+    do {
         _ai->update();
 
         _totalAiGames++;
         _currentAiGames++;
-    }
-    Debug::getInstance().stopTrack(DebugTimeTracks::GAME_UPDATE);
+        updatesCount++;
 
+        currentUpdateTime = updateTimer.nsecsElapsed() - updateStartTime;
+        timeLeft -= currentUpdateTime;
+    } while (timeLeft > currentUpdateTime);
+
+    Debug::getInstance().stopTrack(DebugTimeTracks::GAME_UPDATE);
+    Debug::getInstance().printStats(DebugTrackLevel::DEBUG);
 
     ui->aiTotalGames->setText(QString::number(_totalAiGames));
     ui->aiCurrentGames->setText(QString::number(_currentAiGames));
@@ -80,6 +100,8 @@ void MainWindow::onFieldClick(short x, short y) {
         return;
     }
 
+    qDebug() << "_field->placePiece(" << cellX << ", " << cellY << ", " << _currentPlayer << ");";
+    qDebug() << "_ai->goToNode(" << cellX << ", " << cellY << ", " << _currentPlayer << ");";
     makeMove(cellX, cellY);
 }
 
@@ -148,6 +170,82 @@ void MainWindow::makeMove(short x, short y) {
     }
 }
 
+void MainWindow::checkPattern() {
+    _isGameStarted = false;
+    if (_ai) {
+        delete _ai;
+        _ai = nullptr;
+    }
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(11, 9, BLACK_PIECE_COLOR);
+
+    auto pattern = AIDomainKnowledge::generatePattern(_field, FieldMove::getPositionFromPoint(10, 9), BLACK_PIECE_COLOR, AIDomainKnowledge::SearchDirection::HORIZONTAL);
+    if (pattern.pattern == 7 && pattern.blankPattern == 455) {
+        qDebug() << "First test passed. " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    } else {
+        qDebug() << "First test failed " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    }
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(11, 9, BLACK_PIECE_COLOR);
+
+    pattern = AIDomainKnowledge::generatePattern(_field, FieldMove::getPositionFromPoint(11, 9), BLACK_PIECE_COLOR, AIDomainKnowledge::SearchDirection::HORIZONTAL);
+    if (pattern.pattern == 7 && pattern.blankPattern == 455) {
+        qDebug() << "First test passed. " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    } else {
+        qDebug() << "First test failed " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    }
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(9, 10, BLACK_PIECE_COLOR);
+    _field->placePiece(9, 11, BLACK_PIECE_COLOR);
+
+    pattern = AIDomainKnowledge::generatePattern(_field, FieldMove::getPositionFromPoint(9, 11), BLACK_PIECE_COLOR, AIDomainKnowledge::SearchDirection::VERTICAL);
+    if (pattern.pattern == 7 && pattern.blankPattern == 455) {
+        qDebug() << "First test passed. " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    } else {
+        qDebug() << "First test failed " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    }
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(12, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(13, 9, BLACK_PIECE_COLOR);
+
+    pattern = AIDomainKnowledge::generatePattern(_field, FieldMove::getPositionFromPoint(13, 9), BLACK_PIECE_COLOR, AIDomainKnowledge::SearchDirection::HORIZONTAL);
+    if (pattern.pattern == 27 && pattern.blankPattern == 112) {
+        qDebug() << "First test passed. " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    } else {
+        qDebug() << "First test failed " << pattern.patternStart << " " << pattern.patternEnd << " " << QString::number(pattern.pattern, 2) << " " << QString::number(pattern.blankPattern, 2);
+    }
+
+
+    // check defence
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(12, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(13, 9, BLACK_PIECE_COLOR);
+
+    AIDomainKnowledge::generateDefensiveMoves(_field, FieldMove::getPositionFromPoint(13, 9), BLACK_PIECE_COLOR);
+
+    _field->clear();
+    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(11, 9, BLACK_PIECE_COLOR);
+    _field->placePiece(13, 9, BLACK_PIECE_COLOR);
+
+    AIDomainKnowledge::generateDefensiveMoves(_field, FieldMove::getPositionFromPoint(11, 9), BLACK_PIECE_COLOR);
+}
+
 void MainWindow::onNewGameStarted() {
     _isGameStarted = true;
     _field->clear();
@@ -158,9 +256,66 @@ void MainWindow::onNewGameStarted() {
         _ai = nullptr;
     }
     _ai = new AI(WHITE_PIECE_COLOR);
-    for (int i = 0; i < 100; i++) {
-        _ai->update();
-    }
+
+//    _field->placePiece(9, 9, BLACK_PIECE_COLOR);
+//    _field->placePiece(10, 8, WHITE_PIECE_COLOR);
+//    _field->placePiece(9, 10, BLACK_PIECE_COLOR);
+//    _field->placePiece(9, 8, WHITE_PIECE_COLOR);
+//    _field->placePiece(8, 8, BLACK_PIECE_COLOR);
+//    _field->placePiece(8, 7, WHITE_PIECE_COLOR);
+//    _field->placePiece(10, 10, BLACK_PIECE_COLOR);
+//    _field->placePiece(7, 7, WHITE_PIECE_COLOR);
+//    _field->placePiece(8, 10, BLACK_PIECE_COLOR);
+//    _field->placePiece(11, 10, WHITE_PIECE_COLOR);
+//    _field->placePiece(7, 10, BLACK_PIECE_COLOR);
+
+//    _field->placePiece(6, 10, WHITE_PIECE_COLOR);
+//    _field->placePiece(10, 9, BLACK_PIECE_COLOR);
+//    _field->placePiece(9, 7, WHITE_PIECE_COLOR);
+//    _field->placePiece(11, 11, BLACK_PIECE_COLOR);
+//    _field->placePiece(12, 12, WHITE_PIECE_COLOR);
+//    _field->placePiece(10, 7, BLACK_PIECE_COLOR);
+//    _field->placePiece(6, 7, WHITE_PIECE_COLOR);
+//    _field->placePiece(5, 7, BLACK_PIECE_COLOR);
+//    _field->placePiece(11, 9, WHITE_PIECE_COLOR);
+//    _field->placePiece(8, 6, BLACK_PIECE_COLOR);
+//    _field->placePiece(11, 8, WHITE_PIECE_COLOR);
+//    _field->placePiece(7, 9, BLACK_PIECE_COLOR);
+//    _field->placePiece(12, 10, WHITE_PIECE_COLOR);
+//    _field->placePiece(13, 11, BLACK_PIECE_COLOR);
+//    _field->placePiece(6, 8, WHITE_PIECE_COLOR);
+//    _field->placePiece(6, 9, BLACK_PIECE_COLOR);
+
+//    _ai->goToNode(FieldMove::getPositionFromPoint(9, 9));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(10, 8));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(9, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(9, 8));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(8, 8));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(8, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(10, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(7, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(8, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(11, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(7, 10));
+
+//    _ai->goToNode(FieldMove::getPositionFromPoint(6, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(10, 9));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(9, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(11, 11));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(12, 12));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(10, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(6, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(5, 7));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(11, 9));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(8, 6));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(11, 8));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(7, 9));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(12, 10));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(13, 11));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(6, 8));
+//    _ai->goToNode(FieldMove::getPositionFromPoint(6, 9));
+
+//    _currentPlayer = WHITE_PIECE_COLOR;
 
     updateField();
 }
