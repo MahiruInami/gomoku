@@ -1,7 +1,6 @@
 #include "fieldwidget.h"
 #include "ui_fieldwidget.h"
 #include <QPainter>
-#include <QMouseEvent>
 
 FieldWidget::FieldWidget(QWidget *parent) :
     QFrame(parent),
@@ -30,9 +29,7 @@ void FieldWidget::clearPieces() {
 
 void FieldWidget::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        mouseClicked(event->x(), event->y());
-    }
+    mouseClicked(event->x(), event->y(), event->button());
 }
 
 void FieldWidget::paintEvent(QPaintEvent* /* event */) {
@@ -49,12 +46,23 @@ void FieldWidget::paintEvent(QPaintEvent* /* event */) {
         painter.drawImage(QRect(std::get<0>(piece), std::get<1>(piece), IMAGE_SIZE, IMAGE_SIZE), QImage(image.c_str()));
     }
 
+    short bestMove = 0;
+    float bestScore = -1.f;
+    for (auto& aiMove : _aiMoves) {
+//        if ((aiMove.second.scores > bestScore && aiMove.second.color == 2) || (aiMove.second.scores < bestScore && aiMove.second.color == 1)) {
+        if (aiMove.second.scores > bestScore) {
+            bestScore = aiMove.second.scores;
+            bestMove = aiMove.first;
+        }
+    }
+
     for (auto& aiMove : _aiMoves) {
         std::string image = ":/images/empty_piece.png";
+        std::string postfix = aiMove.first == bestMove ? "_best" : "";
         if (aiMove.second.color == 1) {
-            image = ":/images/black_piece_ai.png";
+            image = ":/images/black_piece_ai" + postfix + ".png";
         } else if (aiMove.second.color == 2) {
-            image = ":/images/white_piece_ai.png";
+            image = ":/images/white_piece_ai" + postfix + ".png";
         }
         painter.drawImage(QRect(aiMove.second.x, aiMove.second.y, IMAGE_SIZE, IMAGE_SIZE), QImage(image.c_str()));
 
@@ -66,7 +74,7 @@ void FieldWidget::paintEvent(QPaintEvent* /* event */) {
         }
 
         painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 4), QString::number(aiMove.second.scores, 'f', 2));
-        painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 12), QString::number(aiMove.second.minMaxScores, 'f', 2));
+        painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 12), QString::number(aiMove.second.selectionScore, 'f', 2));
         painter.drawText(QPoint(aiMove.second.x + 2, aiMove.second.y + 12), playouts.c_str());
     }
 }

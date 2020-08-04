@@ -14,7 +14,7 @@ struct AIMoveData {
     short color;
 
     float scores;
-    float minMaxScores;
+    float selectionScore;
 
     unsigned nodeVisits;
 };
@@ -22,14 +22,30 @@ struct AIMoveData {
 class AI
 {
 public:
+    enum class NodePruneStrategy {
+        NONE,
+        HARD,
+        SOFT
+    };
+    static constexpr unsigned NODE_VISIT_FOR_SAFE_DELETE = 8;
+
     AI(short aiPlayerColor);
     ~AI();
 
     void update();
     void goToNode(short position);
 
+    void setPruneStrategy(NodePruneStrategy strategy) { NODE_PRUNE_STRATEGY = strategy; }
+    bool goTreeForward(short position);
+    bool goBack();
+
+    short getPlayerColor() const { return _playerColor; }
+
+    unsigned getRootPlayoursCount() const { return _root->getNodeExplorations(); }
     AIMoveData getBestNodePosition() const;
     std::vector<AIMoveData> getPossibleMoves() const;
+
+    Field* getBoardState() const { return _board; }
 private:
     void expand(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge);
     void select(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge);
@@ -50,5 +66,7 @@ private:
     unsigned _nodesPruned = 0;
 
     short _playerColor;
+
+    NodePruneStrategy NODE_PRUNE_STRATEGY = NodePruneStrategy::SOFT;
 };
 

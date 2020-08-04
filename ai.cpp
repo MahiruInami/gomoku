@@ -6,18 +6,16 @@
 #include <QDebug>
 #include <QElapsedTimer>
 
-enum class NodePruneStrategy {
-    NONE,
-    HARD,
-    SOFT
-} NODE_PRUNE_STRATEGY = NodePruneStrategy::SOFT;
-constexpr unsigned NODE_VISIT_FOR_SAFE_DELETE = 8;
+constexpr int CHANCE_TO_DROP_DEVELOPMENT_ATTACK = 70;
+constexpr int CHANCE_TO_DROP_DEVELOPMENT_DEFENCE = 80;
 
 AI::AI(short aiPlayerColor)
     : _playerColor(aiPlayerColor)
 {
     _board = new Field();
     _board->clear();
+
+    _domainKnowledge = new AIDomainKnowledge();
 
     _realRoot = new MCTNode();
     _root = _realRoot;
@@ -52,7 +50,7 @@ AIMoveData AI::getBestNodePosition() const {
     MCTNode* bestNode = nullptr;
     float bestNodeScores = -2.;
     for (auto& child : _root->getChildren()) {
-        float nodeScores = child->getNodeEvaluationScore();
+        float nodeScores = child->getNodeEvaluationScore(_playerColor);
         if (!bestNode || bestNodeScores < nodeScores) {
             bestNode = child;
             bestNodeScores = nodeScores;
@@ -65,10 +63,10 @@ AIMoveData AI::getBestNodePosition() const {
 
     AIMoveData moveData;
     moveData.position = bestNode->getPosition();
-    moveData.scores = bestNode->getNodeEvaluationScore();
+    moveData.scores = bestNode->getNodeEvaluationScore(_playerColor);
     moveData.color = bestNode->getColor();
     moveData.nodeVisits = bestNode->getNodeVisits();
-    moveData.minMaxScores = bestNode->getMinMaxScore();
+    moveData.selectionScore = bestNode->getNodeSelectionScore(_playerColor);
 
     return moveData;
 }
@@ -78,10 +76,10 @@ std::vector<AIMoveData> AI::getPossibleMoves() const {
     for (auto& child : _root->getChildren()) {
         AIMoveData moveData;
         moveData.position = child->getPosition();
-        moveData.scores = child->getNodeEvaluationScore();
+        moveData.scores = child->getNodeEvaluationScore(_playerColor);
         moveData.color = child->getColor();
-        moveData.nodeVisits = child->getNodeVisits();
-        moveData.minMaxScores = child->getMinMaxScore();
+        moveData.nodeVisits = child->getNodeExplorations();
+        moveData.selectionScore = child->getNodeSelectionScore(_playerColor);
 
         result.push_back(moveData);
     }
@@ -117,6 +115,112 @@ void AI::_partialPrune(MCTNode *node) {
 bool AI::partialPrune(MCTNode* node) {
     _partialPrune(node);
     return node->getNodeVisits() == 0 || node->getChildren().empty();
+}
+
+bool AI::goTreeForward(short position) {
+    if (_root->hasChild(position)) {
+        if (!_root->_debugState) _root->_debugState = new Field(*_board);
+
+        _root = _root->getChild(position);
+        _board->placePiece(_root->getMove());
+        AIDomainKnowledge::updateDomainKnowledge(_domainKnowledge, _root->getMove().position);
+
+        short currentColor = FieldMove::getNextColor(_root->getColor());
+        if (_board->getMoves().size() >= 2) {
+            short lastMove = *(++_board->getMoves().rbegin());
+            AIDomainKnowledge::generateAttackMoves(_board, lastMove, currentColor, _domainKnowledge->getPatternStore(currentColor));
+        }
+        AIDomainKnowledge::generateDefensiveMoves(_board, _root->getMove().position, _root->getColor(), _domainKnowledge->getPatternStore(currentColor));
+
+        return true;
+    }
+
+    return false;
+}
+
+bool AI::goBack() {
+    if (_root && _root->getParent()) {
+        _root = _root->getParent();
+        if (_root->_debugState) {
+            delete _board;
+            _board = new Field(*(static_cast<Field*>(_root->_debugState)));
+        }
+        return true;
+    }
+
+    return false;
+}
+
+
+void AI::goToNode(short position) {
+    if (_root->hasChild(position)) {
+        _root = _root->getChild(position);
+        _board->placePiece(_root->getMove());
+
+        AIDomainKnowledge::updateDomainKnowledge(_domainKnowledge, _root->getMove().position);
+
+        short currentColor = FieldMove::getNextColor(_root->getColor());
+        if (_board->getMoves().size() >= 2) {
+            short lastMove = *(++_board->getMoves().rbegin());
+            AIDomainKnowledge::generateAttackMoves(_board, lastMove, currentColor, _domainKnowledge->getPatternStore(currentColor));
+        }
+        AIDomainKnowledge::generateDefensiveMoves(_board, _root->getMove().position, _root->getColor(), _domainKnowledge->getPatternStore(currentColor));
+
+        if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
+            auto parent = _root->getParent();
+            _root->setParent(nullptr);
+            auto nodes = parent->getChildren();
+            parent->clearChildren();
+            delete parent;
+            for (auto& node : nodes) {
+                if (node == _root) {
+                    continue;
+                }
+
+                delete node;
+            }
+        } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
+            auto parent = _root->getParent();
+            _root->setParent(nullptr);
+            auto nodes = parent->getChildren();
+            parent->clearChildren();
+
+            for (auto& node : nodes) {
+                if (node == _root) {
+                    continue;
+                }
+
+                _nodesToPrune.push_back(node);
+            }
+        }
+        return;
+    }
+
+    MCTNode* child = new MCTNode();
+    child->setPosition(position);
+    child->setColor(FieldMove::getNextColor(_root->getColor()));
+
+    _board->placePiece(child->getMove());
+
+    AIDomainKnowledge::updateDomainKnowledge(_domainKnowledge, child->getMove().position);
+
+    short currentColor = FieldMove::getNextColor(child->getColor());
+    if (_board->getMoves().size() >= 2) {
+        short lastMove = *(++_board->getMoves().rbegin());
+        AIDomainKnowledge::generateAttackMoves(_board, lastMove, currentColor, _domainKnowledge->getPatternStore(currentColor));
+    }
+    AIDomainKnowledge::generateDefensiveMoves(_board, child->getMove().position, child->getColor(), _domainKnowledge->getPatternStore(currentColor));
+
+    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
+        delete _root;
+        _root = child;
+    } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
+        _nodesToPrune.push_back(_root);
+        _root = child;
+    } else {
+        _root->addChild(child);
+        _root = child;
+    }
 }
 
 void AI::update() {
@@ -158,62 +262,53 @@ void AI::update() {
     Debug::getInstance().stopTrack(DebugTimeTracks::AI_UPDATE);
 }
 
-void AI::goToNode(short position) {
-    if (_root->hasChild(position)) {
-        _root = _root->getChild(position);
-        _board->placePiece(_root->getMove());
+void AI::expand(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
+    short currentColor = FieldMove::getNextColor(node->getColor());
+    if (field->getMoves().size() >= 2) {
+        short lastMove = *(++field->getMoves().rbegin());
+        AIDomainKnowledge::generateAttackMoves(field, lastMove, currentColor, domainKnowledge->getPatternStore(currentColor));
+    }
+    AIDomainKnowledge::generateDefensiveMoves(field, node->getMove().position, node->getColor(), domainKnowledge->getPatternStore(currentColor));
 
-        if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
-            auto parent = _root->getParent();
-            _root->setParent(nullptr);
-            auto nodes = parent->getChildren();
-            parent->clearChildren();
-            delete parent;
-            for (auto& node : nodes) {
-                if (node == _root) {
+    bool usedTacticalMoves = false, usedOnlyDevelopmentMoves = true, usedFirstPriorityMoves = false;
+    unsigned patternCategoryIndex = 0;
+    for (auto& patternCategory : domainKnowledge->getPatternStore(currentColor).patterns) {
+        if (patternCategory.empty()) {
+            patternCategoryIndex++;
+            continue;
+        }
+
+        if (patternCategoryIndex >= AIPatternsStore::DEVELOPMENT_ATTACK && usedFirstPriorityMoves) {
+            break;
+        }
+
+        for (auto& pattern : patternCategory) {
+            for (auto& move : pattern.moves) {
+                usedTacticalMoves = true;
+                usedFirstPriorityMoves = !(pattern.type == AITacticalPatternType::DEVELOPMENT_ATTACK || pattern.type == AITacticalPatternType::DEVELOPMENT_DEFENCE);
+                usedOnlyDevelopmentMoves = usedOnlyDevelopmentMoves && (pattern.type == AITacticalPatternType::DEVELOPMENT_ATTACK || pattern.type == AITacticalPatternType::DEVELOPMENT_DEFENCE);
+
+                if (node->hasChild(move)) {
                     continue;
                 }
 
-                delete node;
-            }
-        } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
-            auto parent = _root->getParent();
-            _root->setParent(nullptr);
-            auto nodes = parent->getChildren();
-            parent->clearChildren();
+                MCTNode* child = new MCTNode();
+                child->setPosition(move);
+                child->setColor(FieldMove::getNextColor(node->getColor()));
 
-            for (auto& node : nodes) {
-                if (node == _root) {
-                    continue;
-                }
-
-                _nodesToPrune.push_back(node);
+                node->addChild(child);
             }
         }
+
+        node->setExpanded(true);
+        patternCategoryIndex++;
+    }
+
+    if (usedTacticalMoves && !usedOnlyDevelopmentMoves) {
         return;
     }
 
-    MCTNode* child = new MCTNode();
-    child->setPosition(position);
-    child->setColor(FieldMove::getNextColor(_root->getColor()));
-
-    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::HARD) {
-        delete _root;
-        _root = child;
-    } else if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT) {
-        _nodesToPrune.push_back(_root);
-        _root = child;
-    } else {
-        _root->addChild(child);
-        _root = child;
-    }
-
-    _board->placePiece(child->getMove());
-}
-
-void AI::expand(MCTNode* node, IField* field, AIDomainKnowledge* /*domainKnowledge*/) {
     auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
-
     for (auto& move : moves) {
         if (node->hasChild(move)) {
             continue;
@@ -234,19 +329,14 @@ void AI::select(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge
     MCTNode* bestNode = nullptr;
     float bestNodeScores = 0.f;
 
-
     bool isAllTerminal = true;
-//    qDebug() << "Select: " << node->getColor() << "xy: " << FieldMove::getXFromPosition(node->getPosition()) << " " << FieldMove::getYFromPosition(node->getPosition());
     for (auto& child : node->getChildren()) {
         if (child->isTerminal()) {
-//            qDebug() << "Skip terminal node: " << child->getColor() << "xy: " << FieldMove::getXFromPosition(child->getPosition()) << " " << FieldMove::getYFromPosition(child->getPosition()) << " " << child->getNodeSelectionScore() << " " << child->getNodeEvaluationScore();
             continue;
         }
 
         isAllTerminal = false;
-        float nodeSelectionScores = child->getNodeSelectionScore();
-//        qDebug() << "check Node: " << child->getColor() << "xy: " << FieldMove::getXFromPosition(child->getPosition()) << " " << FieldMove::getYFromPosition(child->getPosition()) << " " << nodeSelectionScores << " " << child->getNodeEvaluationScore();
-//        if (!bestNode || (bestNodeScores < nodeSelectionScores && node->getColor() != _playerColor) || (bestNodeScores > nodeSelectionScores && node->getColor() == _playerColor)) {
+        float nodeSelectionScores = child->getNodeSelectionScore(_playerColor);
         if (!bestNode || bestNodeScores < nodeSelectionScores) {
             bestNode = child;
             bestNodeScores = nodeSelectionScores;
@@ -259,68 +349,104 @@ void AI::select(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge
         return;
     }
 
-//    qDebug() << "Best node: " << bestNode->getColor() << "xy: " << FieldMove::getXFromPosition(bestNode->getPosition()) << " " << FieldMove::getYFromPosition(bestNode->getPosition()) << " " << bestNode->getNodeSelectionScore() << " " << bestNode->getNodeEvaluationScore();
     explore(bestNode, field, domainKnowledge);
 }
 
 void AI::explore(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
     field->placePiece(node->getMove());
+    AIDomainKnowledge::updateDomainKnowledge(domainKnowledge, node->getMove().position);
     node->setExplored(true);
 
     if (field->getFieldStatus() != FieldStatus::IN_PROGRESS) {
         // game ended
+
         node->setEndpoint(true);
         node->setTerminal(true);
+
+        if (node->getNodeVisits() == 0) {
+            short winningPlayerColor = static_cast<short>(field->getFieldStatus());
+            float scores = 0.f;
+            if (winningPlayerColor == _playerColor) {
+                scores = 1.f;
+            } else if (field->getFieldStatus() != FieldStatus::DRAW) {
+                scores = -1.f;
+            }
+
+            node->backpropagate(scores, nullptr);
+        } else {
+            while (node) {
+                node->addNodeExploration();
+                node = node->getParent();
+            }
+        }
 
         return;
     }
 
-//    int pickExisting = rand() % 10;
-//    if (node->isExpanded() || (node->getChildren().size() > 2 && pickExisting < 6)) {
-//        select(node, field);
-//        return;
-//    }
-
     auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
-    if (node->getChildren().size() == moves.size()) {
-        // check if we explored all nodes
-        bool isAllTerminal = true;
-        bool isExpanded = true;
-        for (auto& move : moves) {
-            if (!node->hasChild(move)) {
-                isExpanded = false;
-                isAllTerminal = false;
-                break;
+
+    short rMove = 0;
+    short currentColor = FieldMove::getNextColor(node->getColor());
+    if (field->getMoves().size() >= 2) {
+        short lastMove = *(++field->getMoves().rbegin());
+        AIDomainKnowledge::generateAttackMoves(field, lastMove, currentColor, domainKnowledge->getPatternStore(currentColor));
+    }
+    AIDomainKnowledge::generateDefensiveMoves(field, node->getMove().position, node->getColor(), domainKnowledge->getPatternStore(currentColor));
+
+    int patternIndex = 0;
+    for (auto& patternCategory : domainKnowledge->getPatternStore(currentColor).patterns) {
+        if (patternCategory.empty()) {
+            patternIndex++;
+            continue;
+        }
+
+        auto moveDecision = rand() % 100;
+        if (moveDecision > 70 && (patternIndex == AIPatternsStore::DEVELOPMENT_ATTACK || patternIndex == AIPatternsStore::DEVELOPMENT_DEFENCE)) {
+            break;
+        }
+
+        auto randomPatternIndexx = rand() % patternCategory.size(); // not _really_ random
+        auto patternIt = patternCategory.begin();
+        while (randomPatternIndexx > 0) { ++patternIt; --randomPatternIndexx; }
+        auto rMoveIndex = rand() % (*patternIt).moves.size();
+        auto moveItr = (*patternIt).moves.begin();
+        while (rMoveIndex > 0) { moveItr++; rMoveIndex--; }
+
+        rMove = *moveItr;
+        if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
+            bool isExit = false;
+            for (auto& pattern : patternCategory) {
+                for (auto& move : pattern.moves) {
+                    if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
+                        rMove = move;
+                        isExit = true;
+                        break;
+                    }
+                }
+
+                if (isExit) {
+                    break;
+                }
             }
-
-            if (!node->getChild(move)->isTerminal()) {
-                isAllTerminal = false;
-            }
         }
 
-        if (isAllTerminal) {
-            node->setTerminal(true);
-            return;
-        }
-
-        if (isExpanded) {
-            node->setExpanded(true);
-            select(node, field, domainKnowledge);
-            return;
-        }
+        break;
     }
 
-    auto rIndex = rand() % moves.size();
-    auto moveItr = moves.begin();
-    while (rIndex > 0) { moveItr++; rIndex--; }
-    auto rMove = *moveItr;
-    if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
-        for (auto& move : moves) {
-            if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
-                rMove = move;
-                break;
-            }
-        }
+    if (rMove == 0) {
+        auto rIndex = rand() % moves.size();
+        auto moveItr = moves.begin();
+        while (rIndex > 0) { moveItr++; rIndex--; }
+        rMove = *moveItr;
+
+//        if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
+//            for (auto& move : moves) {
+//                if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
+//                    rMove = move;
+//                    break;
+//                }
+//            }
+//        }
     }
 
     if (node->hasChild(rMove)) {
@@ -338,6 +464,7 @@ void AI::explore(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledg
 
 void AI::simulatePlayout(MCTNode* node, IField* field, AIDomainKnowledge* domainKnowledge) {
     field->placePiece(node->getMove());
+    AIDomainKnowledge::updateDomainKnowledge(domainKnowledge, node->getMove().position);
     node->setExplored(true);
 
     if (field->getFieldStatus() != FieldStatus::IN_PROGRESS) {
@@ -356,23 +483,75 @@ void AI::simulatePlayout(MCTNode* node, IField* field, AIDomainKnowledge* domain
         return;
     }
 
-    //
 
 
-    auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
-    auto rIndex = rand() % moves.size(); // not _really_ random
-    auto moveItr = moves.begin();
-    while (rIndex > 0) { moveItr++; rIndex--; }
+    short rMove = 0;
+    short currentColor = FieldMove::getNextColor(node->getColor());
+    if (field->getMoves().size() >= 2) {
+        short lastMove = *(++field->getMoves().rbegin());
+        AIDomainKnowledge::generateAttackMoves(field, lastMove, currentColor, domainKnowledge->getPatternStore(currentColor));
+    }
+    AIDomainKnowledge::generateDefensiveMoves(field, node->getMove().position, node->getColor(), domainKnowledge->getPatternStore(currentColor));
 
-    auto rMove = *moveItr;
+    int patternIndex = 0;
+    for (auto& patternCategory : domainKnowledge->getPatternStore(currentColor).patterns) {
+        if (patternCategory.empty()) {
+            patternIndex++;
+            continue;
+        }
 
-    if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
-        for (auto& move : moves) {
-            if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
-                rMove = move;
-                break;
+        auto moveDecision = rand() % 100;
+        if (moveDecision > CHANCE_TO_DROP_DEVELOPMENT_ATTACK && patternIndex == AIPatternsStore::DEVELOPMENT_ATTACK) {
+            break;
+        }
+        if (moveDecision > CHANCE_TO_DROP_DEVELOPMENT_DEFENCE && patternIndex == AIPatternsStore::DEVELOPMENT_DEFENCE) {
+            break;
+        }
+
+        auto randomPatternIndexx = rand() % patternCategory.size(); // not _really_ random
+        auto patternIt = patternCategory.begin();
+        while (randomPatternIndexx > 0) { ++patternIt; --randomPatternIndexx; }
+        auto rMoveIndex = rand() % (*patternIt).moves.size();
+        auto moveItr = (*patternIt).moves.begin();
+        while (rMoveIndex > 0) { moveItr++; rMoveIndex--; }
+
+        rMove = *moveItr;
+
+        if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
+            bool isExit = false;
+            for (auto& pattern : patternCategory) {
+                for (auto& move : pattern.moves) {
+                    if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
+                        rMove = move;
+                        isExit = true;
+                        break;
+                    }
+                }
+
+                if (isExit) {
+                    break;
+                }
             }
         }
+
+        break;
+    }
+
+    if (rMove == 0) {
+        auto& moves = field->getAvailableMoves(FieldMove::getNextColor(node->getColor()));
+        auto rIndex = rand() % moves.size();
+        auto moveItr = moves.begin();
+        while (rIndex > 0) { moveItr++; rIndex--; }
+        rMove = *moveItr;
+
+//        if (node->hasChild(rMove) && node->getChild(rMove)->isTerminal()) {
+//            for (auto& move : moves) {
+//                if (!node->hasChild(move) || !node->getChild(move)->isTerminal()) {
+//                    rMove = move;
+//                    break;
+//                }
+//            }
+//        }
     }
 
     if (node->hasChild(rMove)) {

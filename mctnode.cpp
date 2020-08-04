@@ -39,39 +39,31 @@ MCTNode* MCTNode::getChild(short hashedMove) const {
     return nullptr;
 }
 
-float MCTNode::getNodeSelectionScore() const {
-    float visits = _nodeVisits > 0 ? _nodeVisits : 1.f;
+float MCTNode::getNodeSelectionScore(short playingColor) const {
+    float visits = _nodeExplorations > 0 ? _nodeExplorations : 1.f;
 
-    float visitRatio = _parent ? std::sqrt(std::log2(_parent->getNodeVisits()) / visits) : 0.f;
-    return _scores / visits + visitRatio;
+    float visitRatio = _parent && _parent->getNodeExplorations() > 0 ? std::sqrt(std::log(_parent->getNodeExplorations()) / visits) * 1.5f : 0.f;
+    float score = getNodeEvaluationScore(playingColor);
+    return score + visitRatio;
 }
 
 
-float MCTNode::getNodeEvaluationScore() const {
+float MCTNode::getNodeEvaluationScore(short playingColor) const {
     if (_nodeVisits == 0) {
         return 0.f;
     }
 
-    return _scores / _nodeVisits;
+    float score = _scores / _nodeVisits;
+    if (getColor() != playingColor) { score = -score; }
+    return score;
 }
 
-void MCTNode::backpropagate(float scores, MCTNode* child) {
+void MCTNode::backpropagate(float scores, MCTNode* /*child*/) {
     _scores += scores;
     scores += _tacticalScore;
     _tacticalScore = 0.f;
 
-    if (child == nullptr || _nodeVisits == 0) {
-        _minMaxScore = scores;
-    } else {
-        if (getColor() == BLACK_PIECE_COLOR) _minMaxScore = -1.f;
-        else _minMaxScore = 1.f;
-
-        for (auto& ch : _children) {
-            if (getColor() == BLACK_PIECE_COLOR) _minMaxScore = std::max(_minMaxScore, ch->getMinMaxScore());
-            else _minMaxScore = std::min(_minMaxScore, ch->getMinMaxScore());
-        }
-    }
-
+    _nodeExplorations++;
     _nodeVisits++;
 
     if (_parent) {

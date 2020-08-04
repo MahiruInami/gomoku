@@ -38,17 +38,19 @@ public:
     void setTerminal(bool value) { _isTerminal = value; }
     bool isTerminal() const { return _isTerminal; }
 
+    void addNodeExploration() { _nodeExplorations++; }
     void backpropagate(float scores, MCTNode* child);
-
-    float getMinMaxScore() const { return _minMaxScore; }
 
     void setScores(float value) { _scores = value; }
     float getScores() const { return _scores; }
 
     unsigned getNodeVisits() const { return _nodeVisits; }
+    unsigned getNodeExplorations() const { return _nodeExplorations; }
 
-    float getNodeSelectionScore() const;
-    float getNodeEvaluationScore() const;
+    float getNodeSelectionScore(short playingColor) const;
+    float getNodeEvaluationScore(short playingColor) const;
+
+    IField* getDebugState() { return _debugState; }
 private:
     FieldMove _move;
 
@@ -57,16 +59,15 @@ private:
     bool _isEndpoint = false;
     bool _isTerminal = false;
 
-    bool _isWinningNode = false;
-
     float _scores = 0.f;
     float _tacticalScore = 0.f;
-    float _minMaxScore = 0.f;
-    MCTNode* _minMaxChild = nullptr;
 
     unsigned _nodeVisits = 0;
+    unsigned _nodeExplorations = 0;
 
     MCTNode* _parent = nullptr;
     std::vector<MCTNode*> _children;
     std::unordered_set<short> _hashedChildren;
+
+    IField* _debugState = nullptr;
 };

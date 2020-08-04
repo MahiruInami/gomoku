@@ -5,5 +5,7 @@
         <file>white_piece.png</file>
         <file>black_piece_ai.png</file>
         <file>white_piece_ai.png</file>
+        <file>black_piece_ai_best.png</file>
+        <file>white_piece_ai_best.png</file>
     </qresource>
 </RCC>

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFrame>
+#include <QMouseEvent>
 #include <unordered_map>
 #include "ai.h"
 
@@ -22,7 +23,7 @@ public:
     void addAINextMove(AIMoveData moveData);
     void clearPieces();
 signals:
-    void mouseClicked(short x, short y);
+    void mouseClicked(short x, short y, Qt::MouseButton button);
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void paintEvent(QPaintEvent* event) override;
