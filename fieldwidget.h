@@ -3,7 +3,7 @@
 #include <QFrame>
 #include <QMouseEvent>
 #include <unordered_map>
-#include "ai.h"
+#include "common.h"
 
 namespace Ui {
 class FieldWidget;

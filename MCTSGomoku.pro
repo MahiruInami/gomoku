@@ -16,33 +16,23 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    ai.cpp \
-    aidomainknowledge.cpp \
     bitfield.cpp \
     debug.cpp \
-    field.cpp \
     fieldwidget.cpp \
     main.cpp \
     mainwindow.cpp \
-    mctnode.cpp \
     mctsnode.cpp \
-    mctstree.cpp \
-    movepattern.cpp
+    mctstree.cpp
 
 HEADERS += \
-    ai.h \
-    aidomainknowledge.h \
     bitfield.h \
     common.h \
     debug.h \
-    field.h \
     fieldwidget.h \
     ifield.h \
     mainwindow.h \
-    mctnode.h \
     mctsnode.h \
-    mctstree.h \
-    movepattern.h
+    mctstree.h
 
 FORMS += \
     fieldwidget.ui \

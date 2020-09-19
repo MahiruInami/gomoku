@@ -2,7 +2,6 @@
 
 #include "common.h"
 #include <bitset>
-#include "movepattern.h"
 
 class BitField
 {
@@ -20,7 +19,7 @@ public:
 
     int getGameStatus() const { return _gameStatus; }
     const std::vector<short>& getAvailableMoves() const { return _availableMoves; }
-
+    const std::vector<std::tuple<short, short, short>>& getGameHistory() const { return _history; }
 
     void clear() {
         _availableMovesHash.reset();

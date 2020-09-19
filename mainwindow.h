@@ -8,8 +8,6 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class FieldWidget;
-class IField;
-class AI;
 class BitField;
 class MCTSTree;
 
@@ -56,8 +54,7 @@ private:
 
     Ui::MainWindow *ui;
     FieldWidget* _fieldView = nullptr;
-    IField* _field = nullptr;
-    AI* _ai = nullptr;
+
     BitField* _bitField = nullptr;
     MCTSTree* _mctsTree = nullptr;
 
@@ -72,7 +69,6 @@ private:
     unsigned _currentAiGames = 0;
 
     qint64 _aiBudget = 0;
-    bool _oldAI = false;
 
     std::vector<std::pair<short, short>> _testMoves;
 };

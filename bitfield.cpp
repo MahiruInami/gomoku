@@ -749,3 +749,55 @@ void BitField::updateMovePriority(short x, short y, std::vector<short>& newMoves
 
     Debug::getInstance().stopTrack(DebugTimeTracks::UPDATE_TEMPLATES);
 }
+
+
+// TODO add node pruning
+//void AI::_partialPrune(MCTNode *node) {
+//    if (_nodesToPartialPrune <= 0) {
+//        return;
+//    }
+
+//    for (auto childrenIt = node->getChildren().begin(); childrenIt != node->getChildren().end();) {
+//        if ((*childrenIt)->getNodeVisits() < static_cast<unsigned>(_nodesToPartialPrune) || (*childrenIt)->getChildren().empty()) {
+//            auto nodeForDelete = (*childrenIt);
+//            childrenIt = node->getChildren().erase(childrenIt);
+
+//            _nodesToPartialPrune -= nodeForDelete->getNodeVisits();
+//            _nodesPruned += nodeForDelete->getNodeVisits();
+//            auto parent = nodeForDelete->getParent();
+//            while (parent) { parent->_nodeVisits -= nodeForDelete->getNodeVisits(); parent = parent->getParent(); }
+
+//            nodeForDelete->setParent(nullptr);
+//            delete nodeForDelete;
+//        } else {
+//            auto nodeToCheck = *childrenIt;
+//            ++childrenIt;
+//            _partialPrune(nodeToCheck);
+//        }
+//    }
+//}
+
+//bool AI::partialPrune(MCTNode* node) {
+//    _partialPrune(node);
+//    return node->getNodeVisits() == 0 || node->getChildren().empty();
+//}
+
+
+//void AI::update() {
+//    if (NODE_PRUNE_STRATEGY == NodePruneStrategy::SOFT && !_nodesToPrune.empty()) {
+//        _nodesToPartialPrune = NODE_VISIT_FOR_SAFE_DELETE;
+//        _nodesPruned = 0;
+
+//        auto node = _nodesToPrune.front();
+//        if (node->getNodeVisits() < NODE_VISIT_FOR_SAFE_DELETE || node->getChildren().empty()) {
+//            _nodesToPrune.pop_front();
+//            _nodesToPartialPrune -= node->getNodeVisits();
+//            _nodesPruned += node->getNodeVisits();
+//            node->setParent(nullptr);
+//            delete node;
+//        } else if (partialPrune(node)) {
+//            _nodesToPrune.pop_front();
+//            node->setParent(nullptr);
+//            delete  node;
+//        }
+//    }

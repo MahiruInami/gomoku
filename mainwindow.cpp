@@ -1,10 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "fieldwidget.h"
+#include "IField.h"
 #include "bitfield.h"
 #include "mctstree.h"
-#include "field.h"
-#include "ai.h"
 #include <QMessageBox>
 #include <QTimer>
 #include <QDebug>
@@ -21,7 +20,6 @@ MainWindow::MainWindow(QWidget *parent)
     _fieldView = new FieldWidget();
     ui->FieldView->layout()->addWidget(_fieldView);
 
-    _field = new Field();
     _bitField = new BitField();
 
     connect(ui->startGameButton, &QPushButton::clicked, this, &MainWindow::onNewGameStarted);
@@ -94,10 +92,7 @@ void MainWindow::updateAI() {
         return;
     }
 
-    if (!_ai && _oldAI) {
-        return;
-    }
-    if (!_mctsTree && !_oldAI) {
+    if (!_mctsTree) {
         return;
     }
 
@@ -112,7 +107,6 @@ void MainWindow::updateAI() {
         return;
     }
     qint64 currentUpdateTime = 0;
-    qint64 totalUpdateTime = 0;
     unsigned updatesCount = 0;
     QElapsedTimer updateTimer;
     updateTimer.start();
@@ -120,20 +114,19 @@ void MainWindow::updateAI() {
     do {
         qint64 updateStartTime = updateTimer.nsecsElapsed();
 
-        if (_oldAI) _ai->update();
-        else _mctsTree->update(_bitField);
+        _mctsTree->update(_bitField);
 
         Debug::getInstance().trackCall(DebugCallTracks::GAME_UPDATE);
 
         _totalAiGames += 1;
-        _currentAiGames += _oldAI ? 1 : _mctsTree->getThreadsCount();
+        _currentAiGames += _mctsTree->getThreadsCount();
         updatesCount++;
 
         currentUpdateTime = updateTimer.nsecsElapsed() - updateStartTime;
         _aiBudget -= currentUpdateTime;
     } while (_aiBudget > currentUpdateTime);
-    totalUpdateTime = updateTimer.nsecsElapsed();
 
+//    qint64 totalUpdateTime = updateTimer.nsecsElapsed();
 //    qDebug() << _aiBudget << currentUpdateTime << totalUpdateTime;
 
     Debug::getInstance().stopTrack(DebugTimeTracks::GAME_UPDATE);
@@ -148,11 +141,7 @@ void MainWindow::updateAIOnce() {
         return;
     }
 
-    if (_ai && _oldAI) {
-        _ai->update();
-    }
-
-    if (_mctsTree && !_oldAI) {
+    if (_mctsTree) {
         MCTSTree::NODE_EXPLORATIONS_TO_EXPAND = 1;
         _mctsTree->update(_bitField);
     }
@@ -175,36 +164,22 @@ void MainWindow::checkAIMove() {
         return;
     }
 
-    if (!_ai) {
+    if (getCurrentColor() != _aiPlayerColor) {
         return;
     }
 
-    if (getCurrentColor() != _ai->getPlayerColor()) {
-        return;
-    }
-
-    if (_ai->getRootPlayoursCount() > 1000 * _aiLevel) {
-        auto bestMove = _ai->getBestNodePosition();
-        makeMove(FieldMove::getXFromPosition(bestMove.position), FieldMove::getYFromPosition(bestMove.position));
-    }
+//    if (_ai->getRootPlayoursCount() > 1000 * _aiLevel) {
+//        auto bestMove = _ai->getBestNodePosition();
+//        makeMove(FieldMove::getXFromPosition(bestMove.position), FieldMove::getYFromPosition(bestMove.position));
+//    }
 }
 
 void MainWindow::updateField() {
     _fieldView->clearPieces();
     std::unordered_set<short> cells;
-    for (auto& piece : _field->getMoves()) {
-        cells.insert(piece);
-        _fieldView->addPiece(FieldMove::getXFromPosition(piece) * FieldWidget::IMAGE_SIZE, FieldMove::getYFromPosition(piece) * FieldWidget::IMAGE_SIZE, _field->getBoardState()[piece]);
-    }
-
-    if (_ai && _oldAI) {
-        auto aiMoves = _ai->getPossibleMoves();
-        for (auto& aiMove : aiMoves) {
-            aiMove.x = FieldMove::getXFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
-            aiMove.y = FieldMove::getYFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
-            _fieldView->addAINextMove(aiMove);
-            cells.insert(aiMove.position);
-        }
+    for (auto& move : _bitField->getGameHistory()) {
+        cells.insert(getHashedPosition(std::get<0>(move), std::get<1>(move)));
+        _fieldView->addPiece(std::get<0>(move) * FieldWidget::IMAGE_SIZE, std::get<1>(move) * FieldWidget::IMAGE_SIZE, std::get<2>(move));
     }
 
     if (_mctsTree) {
@@ -286,20 +261,20 @@ void MainWindow::onFieldClick(short x, short y, Qt::MouseButton button) {
 //    }
 
     if (_currentMode == MODE::VIEW_TREE) {
-        short position = FieldMove::getPositionFromPoint(cellX, cellY);
-        if (button == Qt::LeftButton) {
-            if (_ai->goTreeForward(position)) {
-                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
-                delete _field;
-                _field = new Field(*_ai->getBoardState());
-            }
-        } else if (button == Qt::RightButton) {
-            if (_ai->goBack()) {
-                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
-                delete _field;
-                _field = new Field(*_ai->getBoardState());
-            }
-        }
+//        short position = FieldMove::getPositionFromPoint(cellX, cellY);
+//        if (button == Qt::LeftButton) {
+//            if (_ai->goTreeForward(position)) {
+//                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
+//                delete _field;
+//                _field = new Field(*_ai->getBoardState());
+//            }
+//        } else if (button == Qt::RightButton) {
+//            if (_ai->goBack()) {
+//                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
+//                delete _field;
+//                _field = new Field(*_ai->getBoardState());
+//            }
+//        }
 
         updateField();
         return;
@@ -336,20 +311,16 @@ void MainWindow::onFieldClick(short x, short y, Qt::MouseButton button) {
 }
 
 void MainWindow::makeMove(short x, short y) {
-    if (!_field->placePiece(x, y, getCurrentColor())) {
+    qDebug() << "{" << x << "," << y << "}";
+    if (!_bitField->makeMove(x, y, getCurrentColor())) {
         return;
     }
 
-    qDebug() << "{" << x << "," << y << "}";
-    _bitField->makeMove(x, y, getCurrentColor());
     if (_mctsTree) {
         _mctsTree->selectChild(x, y);
     }
 
     _currentAiGames = 0;
-    if (_oldAI && _ai) {
-        _ai->goToNode(FieldMove::getPositionFromPoint(x, y));
-    }
     _currentPlayer = FieldMove::getNextColor(_currentPlayer);
 
     updateField();
@@ -382,7 +353,6 @@ void MainWindow::checkPattern() {
     constexpr int MOVES_COUNT = 120;
     constexpr std::array<std::pair<short, short>, MOVES_COUNT> moves = {{{ 9 , 9 } ,{ 10 , 8 } ,{ 9 , 8 } ,{ 9 , 7 } ,{ 8 , 6 } ,{ 8 , 7 } ,{ 11 , 7 } ,{ 10 , 7 } ,{ 10 , 9 } ,{ 7 , 7 } ,{ 6 , 7 } ,{ 10 , 6 } ,{ 10 , 5 } ,{ 11 , 5 } ,{ 12 , 4 } ,{ 8 , 8 } ,{ 7 , 9 } ,{ 7 , 8 } ,{ 6 , 8 } ,{ 6 , 9 } ,{ 5 , 10 } ,{ 8 , 9 } ,{ 6 , 6 } ,{ 8 , 10 } ,{ 8 , 11 } ,{ 12 , 6 } ,{ 6 , 5 } ,{ 6 , 4 } ,{ 7 , 6 } ,{ 5 , 6 } ,{ 5 , 8 } ,{ 4 , 9 } ,{ 8 , 5 } ,{ 9 , 4 } ,{ 5 , 9 } ,{ 5 , 11 } ,{ 7 , 5 } ,{ 9 , 5 } ,{ 5 , 5 } ,{ 4 , 5 } ,{ 8 , 4 } ,{ 5 , 7 } ,{ 9 , 6 } ,{ 9 , 3 } ,{ 11 , 6 } ,{ 13 , 7 } ,{ 15 , 6 } ,{ 14 , 5 } ,{ 14 , 4 } ,{ 13 , 3 } ,{ 13 , 4 } ,{ 15 , 4 } ,{ 15 , 7 } ,{ 15 , 8 } ,{ 13 , 9 } ,{ 13 , 10 } ,{ 14 , 10 } ,{ 14 , 9 } ,{ 12 , 10 } ,{ 12 , 11 } ,{ 13 , 11 } ,{ 14 , 12 } ,{ 13 , 13 } ,{ 12 , 13 } ,{ 11 , 14 } ,{ 11 , 13 } ,{ 10 , 12 } ,{ 9 , 12 } ,{ 9 , 13 } ,{ 7 , 13 } ,{ 6 , 13 } ,{ 6 , 14 } ,{ 4 , 13 } ,{ 3 , 12 } ,{ 2 , 11 } ,{ 1 , 9 } ,{ 2 , 7 } ,{ 3 , 10 } ,{ 2 , 8 } ,{ 3 , 8 } ,{ 3 , 6 } ,{ 3 , 5 } ,{ 2 , 5 } ,{ 1 , 6 } ,{ 1 , 2 } ,{ 4 , 3 } ,{ 5 , 2 } ,{ 8 , 2 } ,{ 11 , 1 } ,{ 12 , 1 } ,{ 12 , 2 } ,{ 10 , 2 } ,{ 9 , 1 } ,{ 10 , 1 } ,{ 15 , 1 } ,{ 15 , 2 } ,{ 16 , 4 } ,{ 17 , 5 } ,{ 16 , 7 } ,{ 16 , 9 } ,{ 15 , 10 } ,{ 15 , 11 } ,{ 15 , 12 } ,{ 16 , 13 } ,{ 15 , 14 } ,{ 13 , 14 } ,{ 12 , 15 } ,{ 11 , 16 } ,{ 9 , 17 } ,{ 7 , 17 } ,{ 5 , 17 } ,{ 4 , 16 } ,{ 4 , 15 } ,{ 3 , 15 } ,{ 3 , 16 } ,{ 3 , 17 } ,{ 1 , 15 } ,{ 2 , 15 } ,{ 3 , 14 } ,{ 5 , 15 }}};
 
-    qint64 moveTime = 0;
     BitField* field = new BitField();
 
     constexpr bool CHECK_PATTERN = false;
@@ -414,36 +384,6 @@ void MainWindow::checkPattern() {
 
     qDebug() << "10k plays " << timer.nsecsElapsed() << timer.elapsed();
 
-    moveTime = 0;
-    Field* oldField = new Field();
-    AIDomainKnowledge* domainKnowledge = new AIDomainKnowledge();
-    timer.restart();
-
-    for (int i = 0; i < 1000; i++) {
-        oldField->clear();
-        domainKnowledge->clear();
-        short fieldColor = BLACK_PIECE_COLOR;
-        for (int j = 0; j < MOVES_COUNT; j++) {
-            if (!oldField->placePiece(moves[j].first, moves[j].second, fieldColor)) {
-                return;
-            }
-
-            short moveHash = getHashedPosition(moves[j].first, moves[j].second);
-            AIDomainKnowledge::updateDomainKnowledge(domainKnowledge, moveHash);
-            fieldColor = FieldMove::getNextColor(fieldColor);
-            if (oldField->getMoves().size() >= 2) {
-
-                short lastMove = *(++oldField->getMoves().rbegin());
-                AIDomainKnowledge::generateAttackMoves(oldField, lastMove, FieldMove::getNextColor(fieldColor), domainKnowledge->getPatternStore(fieldColor));
-            }
-            AIDomainKnowledge::generateDefensiveMoves(oldField, moveHash, fieldColor, domainKnowledge->getPatternStore(fieldColor));
-        }
-    }
-    delete oldField;
-    delete domainKnowledge;
-
-    qDebug() << "10k plays old " << timer.nsecsElapsed() << timer.elapsed();
-
     return;
 }
 
@@ -471,25 +411,16 @@ void MainWindow::showAIPlayouts() {
 
 void MainWindow::onNewGameStarted() {
     _isGameStarted = true;
-    _field->clear();
     _bitField->clear();
     _currentPlayer = BLACK_PIECE_COLOR;
     _aiPlayerColor = WHITE_PIECE_COLOR;
     _aiLevel = ui->aiLevel->currentIndex() + 1;
 
-    if (_oldAI) {
-        if (_ai) {
-            delete _ai;
-            _ai = nullptr;
-        }
-        _ai = new AI(_aiPlayerColor);
-    } else {
-        if (_mctsTree) {
-            delete _mctsTree;
-            _mctsTree = nullptr;
-        }
-        _mctsTree = new MCTSTree(_aiPlayerColor);
+    if (_mctsTree) {
+        delete _mctsTree;
+        _mctsTree = nullptr;
     }
+    _mctsTree = new MCTSTree(_aiPlayerColor);
 
     updateField();
 
