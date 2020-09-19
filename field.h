@@ -15,6 +15,7 @@ public:
     virtual bool placePiece(short x, short y, short color) override;
     virtual bool placePiece(short position, short color) override;
     virtual bool placePiece(const FieldMove& move) override;
+    virtual bool unmakeMove();
     virtual FieldStatus getFieldStatus() const override;
     virtual void printField() const override;
     virtual void clear() override;
@@ -24,7 +25,7 @@ protected:
 protected:
     FieldStatus _status;
     std::vector<short> _currentMoves;
-    std::array<short, BOARD_SIZE * BOARD_SIZE> _board;
+    std::array<short, BOARD_SIZE * BOARD_SIZE> _board = {0};
     std::unordered_set<short> _availableMoves;
 
     std::array<std::unordered_set<short>, 5> _winningMoves;

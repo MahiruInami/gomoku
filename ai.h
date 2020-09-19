@@ -7,18 +7,6 @@
 #include "field.h"
 #include "aidomainknowledge.h"
 
-struct AIMoveData {
-    short position;
-    short x;
-    short y;
-    short color;
-
-    float scores;
-    float selectionScore;
-
-    unsigned nodeVisits;
-};
-
 class AI
 {
 public:

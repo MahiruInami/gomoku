@@ -44,6 +44,10 @@ struct AIPatternsStore {
 //    std::array<std::vector<short>, BOARD_LENGTH> miaiPoints;
 //    std::array<std::vector<short>, BOARD_LENGTH> tacticalMiaiPoints;
     std::array<std::list<AITacticalPattern>, CATEGORIES_COUNT> patterns;
+
+    void clear () {
+        patterns.fill({});
+    }
 };
 
 class AIDomainKnowledge
@@ -71,6 +75,10 @@ public:
     static void updateDomainKnowledge(AIDomainKnowledge* domainKnowledge, short move);
 
     AIPatternsStore& getPatternStore(short color) { return _domain[color]; }
+
+    void clear() {
+        _domain.fill({});
+    }
 private:
     std::array<AIPatternsStore, 3> _domain;
 };

@@ -33,6 +33,19 @@ const std::vector<short> Field::getMoves() const {
     return _currentMoves;
 }
 
+bool Field::unmakeMove() {
+    if (_currentMoves.empty()) {
+        return false;
+    }
+
+    auto position = _currentMoves.back();
+    _currentMoves.pop_back();
+
+    _board[position] = 0;
+
+    return true;
+}
+
 bool Field::placePiece(short x, short y, short color) {
     FieldMove move;
     move.position = FieldMove::getPositionFromPoint(x, y);
@@ -233,13 +246,6 @@ void Field::clear() {
 
     short fieldCenter = BOARD_SIZE / 2;
     _availableMoves.insert(fieldCenter * FieldMove::MIN_X_VALUE  + fieldCenter * FieldMove::MIN_Y_VALUE);
-
-//    for (short y = 0; y < BOARD_SIZE; ++y) {
-//        for (short x = 0; x < BOARD_SIZE; ++x) {
-//            short newPosition = x * FieldMove::MIN_X_VALUE  + y * FieldMove::MIN_Y_VALUE;
-//            _availableMoves.insert(newPosition);
-//         }
-//    }
 }
 
 void Field::printField() const {

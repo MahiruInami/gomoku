@@ -1,0 +1,291 @@
+{
+    "templates": [
+        {
+            "pattern": "*1111",
+            "defence_pattern": "*",
+            "priority": 8,
+            "win_in": 1,
+            "uniqueId": 1
+        },
+        {
+            "pattern": "1*111",
+            "defence_pattern": "*",
+            "priority": 8,
+            "win_in": 1,
+            "uniqueId": 2
+        },
+        {
+            "pattern": "11*11",
+            "defence_pattern": "*",
+            "priority": 8,
+            "win_in": 1,
+            "uniqueId": 3
+        },
+        {
+            "pattern": "111*1",
+            "defence_pattern": "*",
+            "priority": 8,
+            "win_in": 1,
+            "uniqueId": 4
+        },
+        {
+            "pattern": "1111*",
+            "defence_pattern": "*",
+            "priority": 8,
+            "win_in": 1,
+            "uniqueId": 5
+        },
+        {
+            "pattern": "0111*0",
+            "defence_pattern": "1000*",
+            "priority": 6,
+            "win_in": 2,
+            "uniqueId": 6
+        },
+        {
+            "pattern": "0*1110",
+            "defence_pattern": "*0001",
+            "priority": 6,
+            "win_in": 2,
+            "uniqueId": 7
+        },
+        {
+            "pattern": "011*10",
+            "defence_pattern": "100*01",
+            "priority": 6,
+            "win_in": 2,
+            "uniqueId": 8
+        },
+        {
+            "pattern": "01*110",
+            "defence_pattern": "10*001",
+            "priority": 6,
+            "win_in": 2,
+            "uniqueId": 9
+        },
+        {
+            "pattern": "10*11",
+            "defence_pattern": "1*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 28
+        },
+        {
+            "pattern": "1*011",
+            "defence_pattern": "*1",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 29
+        },
+        {
+            "pattern": "11*01",
+            "defence_pattern": "*1",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 30
+        },
+        {
+            "pattern": "110*1",
+            "defence_pattern": "1*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 31
+        },
+        {
+            "pattern": "*10110",
+            "defence_pattern": "*01001",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 10
+        },
+        {
+            "pattern": "01011*",
+            "defence_pattern": "10100*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 11
+        },
+        {
+            "pattern": "*11010",
+            "defence_pattern": "*00101",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 12
+        },
+        {
+            "pattern": "01101*",
+            "defence_pattern": "10010*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 13
+        },
+        {
+            "pattern": "E11*10",
+            "defence_pattern": "*01",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 14
+        },
+        {
+            "pattern": "E1101*",
+            "defence_pattern": "10*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 15
+        },
+        {
+            "pattern": "011*1E",
+            "defence_pattern": "100*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 16
+        },
+        {
+            "pattern": "*1101E",
+            "defence_pattern": "*001",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 17
+        },
+        {
+            "pattern": "E1*110",
+            "defence_pattern": "*001",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 18
+        },
+        {
+            "pattern": "E1011*",
+            "defence_pattern": "100*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 19
+        },
+        {
+            "pattern": "01*11E",
+            "defence_pattern": "10*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 20
+        },
+        {
+            "pattern": "*1011E",
+            "defence_pattern": "*01",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 21
+        },
+        {
+            "pattern": "E111*0",
+            "defence_pattern": "*1",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 22
+        },
+        {
+            "pattern": "E1110*",
+            "defence_pattern": "1*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 23
+        },
+        {
+            "pattern": "0*111E",
+            "defence_pattern": "1*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 24
+        },
+        {
+            "pattern": "*0111E",
+            "defence_pattern": "*1",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 25
+        },
+        {
+            "pattern": "E*1110E",
+            "defence_pattern": "*0001",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 26
+        },
+        {
+            "pattern": "E0111*E",
+            "defence_pattern": "1000*",
+            "priority": 4,
+            "win_in": 2,
+            "uniqueId": 27
+        }
+    ],
+    "miai_points": [
+        {
+            "miaiId": 1,
+            "patterns": [1]
+        },
+        {
+            "miaiId": 2,
+            "patterns": [2]
+        },
+        {
+            "miaiId": 3,
+            "patterns": [3]
+        },
+        {
+            "miaiId": 4,
+            "patterns": [4]
+        },
+        {
+            "miaiId": 5,
+            "patterns": [5]
+        },
+        {
+            "miaiId": 6,
+            "patterns": [6, 7]
+        },
+        {
+            "miaiId": 7,
+            "patterns": [8, 10, 11]
+        },
+        {
+            "miaiId": 8,
+            "patterns": [9, 12, 13]
+        },
+        {
+            "miaiId": 9,
+            "patterns": [14, 15]
+        },
+        {
+            "miaiId": 10,
+            "patterns": [16, 17]
+        },
+        {
+            "miaiId": 11,
+            "patterns": [18, 19]
+        },
+        {
+            "miaiId": 12,
+            "patterns": [20, 21]
+        },
+        {
+            "miaiId": 13,
+            "patterns": [22, 23]
+        },
+        {
+            "miaiId": 14,
+            "patterns": [24, 25]
+        },
+        {
+            "miaiId": 15,
+            "patterns": [26, 27]
+        },
+        {
+            "miaiId": 16,
+            "patterns": [28, 29]
+        },
+        {
+            "miaiId": 17,
+            "patterns": [30, 31]
+        }
+    ]
+}

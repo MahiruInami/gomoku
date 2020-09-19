@@ -22,9 +22,14 @@ void FieldWidget::addAINextMove(AIMoveData moveData) {
     _aiMoves[moveData.position] = moveData;
 }
 
+void FieldWidget::addAIBestPlayoutMove(AIMoveData moveData) {
+    _aiBestPlayout[moveData.position] = moveData;
+}
+
 void FieldWidget::clearPieces() {
     _pieces.clear();
     _aiMoves.clear();
+    _aiBestPlayout.clear();
 }
 
 void FieldWidget::mousePressEvent(QMouseEvent *event)
@@ -69,12 +74,44 @@ void FieldWidget::paintEvent(QPaintEvent* /* event */) {
         std::string playouts = "";
         if (aiMove.second.nodeVisits < 1000) {
             playouts = std::to_string(aiMove.second.nodeVisits);
-        } else {
+        } else if (aiMove.second.nodeVisits < 10000) {
             playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100.f)) + std::string("K");
+        } else if (aiMove.second.nodeVisits < 100000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 10000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000.f)) + std::string("T");
+        } else if (aiMove.second.nodeVisits < 1000000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 10000.f)) + std::string("M");
+        } else if (aiMove.second.nodeVisits < 1000000000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100000.f)) + std::string("B");
         }
 
         painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 4), QString::number(aiMove.second.scores, 'f', 2));
         painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 12), QString::number(aiMove.second.selectionScore, 'f', 2));
+        painter.drawText(QPoint(aiMove.second.x + 2, aiMove.second.y + 12), playouts.c_str());
+    }
+
+    for (auto& aiMove : _aiBestPlayout) {
+        std::string image = ":/images/empty_piece.png";
+        if (aiMove.second.color == 1) {
+            image = ":/images/black_piece.png";
+        } else if (aiMove.second.color == 2) {
+            image = ":/images/white_piece.png";
+        }
+        painter.drawImage(QRect(aiMove.second.x, aiMove.second.y, IMAGE_SIZE, IMAGE_SIZE), QImage(image.c_str()));
+
+        std::string playouts = "";
+        if (aiMove.second.nodeVisits < 1000) {
+            playouts = std::to_string(aiMove.second.nodeVisits);
+        } else if (aiMove.second.nodeVisits < 10000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100.f)) + std::string("K");
+        } else if (aiMove.second.nodeVisits < 100000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 10000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000.f)) + std::string("T");
+        } else if (aiMove.second.nodeVisits < 1000000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 10000.f)) + std::string("M");
+        } else if (aiMove.second.nodeVisits < 1000000000) {
+            playouts = std::to_string(static_cast<int>(aiMove.second.nodeVisits / 1000000.f)) + std::string(".") + std::to_string(static_cast<int>(aiMove.second.nodeVisits / 100000.f)) + std::string("B");
+        }
+
+        painter.drawText(QPoint(aiMove.second.x + 1, aiMove.second.y + IMAGE_SIZE - 4), QString::number(aiMove.second.scores, 'f', 2));
         painter.drawText(QPoint(aiMove.second.x + 2, aiMove.second.y + 12), playouts.c_str());
     }
 }

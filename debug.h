@@ -14,12 +14,27 @@ enum class DebugTrackLevel : unsigned {
 enum class DebugTimeTracks : unsigned {
     GAME_UPDATE = 0,
     AI_UPDATE,
+    INCREMENTAL_UPDATE,
+    MAKE_MOVE,
+    UPDATE_PRIORITY,
+    NODE_SELECTION,
+    TRAVERSE_AND_EXPAND,
+    ERASE_AVAILABLE_MOVES,
+    CLEAR_TEMPLATES,
+    ADD_NEW_MOVES,
+    UPDATE_TEMPLATES,
+    CREATE_TEMPLATE,
 
     TOTAL_TRACKS
 };
 
 enum class DebugCallTracks : unsigned {
     GAME_UPDATE = 0,
+    MAKE_MOVE,
+    UPDATE_PRIORITY,
+    CREATE_TEMPLATE,
+    UPDATE_TEMPLATES,
+    UPDATE_TEMPLATES_INLINE,
     TOTAL_TRACKS
 };
 

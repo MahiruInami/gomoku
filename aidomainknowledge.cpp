@@ -276,18 +276,23 @@ void AIDomainKnowledge::generateAttackMoves(IField* field, short move, short col
         }
         // 111 - pattern with blank pattern
         if (pattern.pattern == 7) {
-            // blank patterns 1100011 - 99, 110001 - 49, 100011 - 35
-            if (pattern.blankPattern == 99 || pattern.blankPattern == 49 || pattern.blankPattern == 35) {
-                AITacticalPattern attackPattern;
-                attackPattern.type = AITacticalPatternType::VITAL_ATTACK;
+            // blank patterns 1100011 - 99, 110001 - 49
+            AITacticalPattern attackPattern7;
+            attackPattern7.type = AITacticalPatternType::VITAL_ATTACK;
 
+            if (pattern.blankPattern == 99 || pattern.blankPattern == 49) {
+                short attack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
+                attackPattern7.moves.insert(attack);
+            }
+
+            // blank patterns 1100011 - 99, 100011 - 35
+            if (pattern.blankPattern == 99 || pattern.blankPattern == 35) {
                 short attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 1, true);
-                attackPattern.moves.insert(attack);
+                attackPattern7.moves.insert(attack);
+            }
 
-                short secondAttack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
-                attackPattern.moves.insert(secondAttack);
-
-                store.patterns[AIPatternsStore::VITAL_ATTACK].push_back(attackPattern);
+            if (!attackPattern7.moves.empty()) {
+                store.patterns[AIPatternsStore::VITAL_ATTACK].push_back(attackPattern7);
             }
 
             // tactical move with pattern 111 and blank pattern 11000
@@ -365,6 +370,58 @@ void AIDomainKnowledge::generateAttackMoves(IField* field, short move, short col
                 attackPattern.moves.insert(attack);
 
                 attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                attackPattern.moves.insert(attack);
+            }
+
+            if (!attackPattern.moves.empty()) {
+                store.patterns[AIPatternsStore::DEVELOPMENT_ATTACK].push_back(attackPattern);
+            }
+        }
+
+        // 101 - tactical pattern
+        if (pattern.pattern == 5) {
+            AITacticalPattern attackPattern;
+            attackPattern.type = AITacticalPatternType::DEVELOPMENT_ATTACK;
+
+            // blank - 1100011
+            if (pattern.blankPattern == 99) {
+                short attack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 2, false);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 1, true);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
+                attackPattern.moves.insert(attack);
+            }
+
+            // blank - 110001
+            if (pattern.blankPattern == 49) {
+                short attack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 2, false);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
+                attackPattern.moves.insert(attack);
+            }
+
+            // blank - 100011
+            if (pattern.blankPattern == 35) {
+                short attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 1, true);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                attackPattern.moves.insert(attack);
+
+                attack = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
                 attackPattern.moves.insert(attack);
             }
 
@@ -566,6 +623,58 @@ void AIDomainKnowledge::generateDefensiveMoves(IField* field, short move, short 
                 defencePattern.moves.insert(defence);
 
                 defence = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                defencePattern.moves.insert(defence);
+            }
+
+            if (!defencePattern.moves.empty()) {
+                store.patterns[AIPatternsStore::DEVELOPMENT_DEFENCE].push_back(defencePattern);
+            }
+        }
+
+        // 101 - tactical pattern
+        if (pattern.pattern == 5) {
+            AITacticalPattern defencePattern;
+            defencePattern.type = AITacticalPatternType::DEVELOPMENT_DEFENCE;
+
+            // blank - 1100011
+            if (pattern.blankPattern == 99) {
+                short defence = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 2, false);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart + 1, true);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
+                defencePattern.moves.insert(defence);
+            }
+
+            // blank - 110001
+            if (pattern.blankPattern == 49) {
+                short defence = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 1, false);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternEnd + 2, false);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
+                defencePattern.moves.insert(defence);
+            }
+
+            // blank - 100011
+            if (pattern.blankPattern == 35) {
+                short defence = getNextMoveInDirection(move, directions[index], pattern.patternStart + 1, true);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart + 2, true);
+                defencePattern.moves.insert(defence);
+
+                defence = getNextMoveInDirection(move, directions[index], pattern.patternStart - 1, true);
                 defencePattern.moves.insert(defence);
             }
 
