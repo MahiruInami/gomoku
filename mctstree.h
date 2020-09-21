@@ -16,6 +16,7 @@ public:
     std::vector<AIMoveData> getNodesData() const;
     std::vector<AIMoveData> getBestPlayout(short x, short y) const;
     unsigned getTotalPlayouts() const { return _root ? _root->getRealPlayouts() : 0; }
+    unsigned getChildrenCount() const { return _root ? _root->getChildrenCount() : 0; }
 
     unsigned getThreadsCount() const { return _maxTreads; }
 private:

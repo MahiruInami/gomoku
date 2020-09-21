@@ -50,9 +50,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timer2, SIGNAL(timeout()), this, SLOT(updateAIField()));
     timer2->start(2000);
 
-//    QTimer *aiMoveTimer = new QTimer(this);
-//    connect(aiMoveTimer, SIGNAL(timeout()), this, SLOT(checkAIMove()));
-//    aiMoveTimer->start(5000);
+    QTimer *aiMoveTimer = new QTimer(this);
+    connect(aiMoveTimer, SIGNAL(timeout()), this, SLOT(checkAIMove()));
+    aiMoveTimer->start(5000);
 
 
     Debug::getInstance().registerTimeTrackName(DebugTimeTracks::GAME_UPDATE, "Update Game");
@@ -168,10 +168,19 @@ void MainWindow::checkAIMove() {
         return;
     }
 
-//    if (_ai->getRootPlayoursCount() > 1000 * _aiLevel) {
-//        auto bestMove = _ai->getBestNodePosition();
-//        makeMove(FieldMove::getXFromPosition(bestMove.position), FieldMove::getYFromPosition(bestMove.position));
-//    }
+    if (_mctsTree && (_mctsTree->getTotalPlayouts() > (_mctsTree->getChildrenCount() * 1000 * _aiLevel * _aiLevel) || _mctsTree->getChildrenCount() == 1)) {
+        auto nodesData = _mctsTree->getNodesData();
+        float bestScores = -100.f;
+        short bestPosition = -1;
+
+        for (auto& node : nodesData) {
+            if (node.scores > bestScores) {
+                bestScores = node.scores;
+                bestPosition = node.position;
+            }
+        }
+        makeMove(FieldMove::getXFromPosition(bestPosition), FieldMove::getYFromPosition(bestPosition));
+    }
 }
 
 void MainWindow::updateField() {

@@ -216,6 +216,34 @@
             "priority": 4,
             "win_in": 2,
             "uniqueId": 27
+        },
+        {
+            "pattern": "0110*0",
+            "defence_pattern": "1001*",
+            "priority": 2,
+            "win_in": 3,
+            "uniqueId": 32
+        },
+        {
+            "pattern": "011*00",
+            "defence_pattern": "100*1",
+            "priority": 2,
+            "win_in": 3,
+            "uniqueId": 33
+        },
+        {
+            "pattern": "0*0110",
+            "defence_pattern": "*1001",
+            "priority": 2,
+            "win_in": 3,
+            "uniqueId": 34
+        },
+        {
+            "pattern": "00*110",
+            "defence_pattern": "1*001",
+            "priority": 2,
+            "win_in": 3,
+            "uniqueId": 35
         }
     ],
     "miai_points": [
@@ -286,6 +314,10 @@
         {
             "miaiId": 17,
             "patterns": [30, 31]
+        },
+        {
+            "miaiId": 18,
+            "patterns": [32, 33, 34, 35]
         }
     ]
 }

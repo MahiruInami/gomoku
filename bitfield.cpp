@@ -363,11 +363,9 @@ void BitField::incrementalUpdate(short x, short y, short color) {
         short attackIndex = (pattern & ATTACK_ID_MASK) >> ATTACK_ID_SHIFT;
         short currentShift = MOVE_PATTERNS[patternId].defence[attackIndex];
 
-//        qDebug() << "Deleting pattern " << pattern << patternId;
         bool shouldDeleteKey = false;
         for (int i = 0; i < AI_PATTERN_DEFENCES_COUNT; ++i) {
             if (MOVE_PATTERNS[patternId].defence[i] == 0 && i > 0) {
-//                qDebug() << "break" << patternId << i;
                 break;
             }
 
@@ -390,7 +388,6 @@ void BitField::incrementalUpdate(short x, short y, short color) {
             }
 
             if (resetX < 0 || resetY < 0 || resetX >= BOARD_SIZE || resetY >= BOARD_SIZE) {
-//                qDebug() << "out bounds to delete " << resetX << resetY << pattern << i << currentShift << shift;
                 continue;
             }
 
@@ -401,14 +398,11 @@ void BitField::incrementalUpdate(short x, short y, short color) {
                 return (value & DIRECTION_ID_MASK) == (resetPatternHash & DIRECTION_ID_MASK) && (value & MIAI_ID_MASK) == (resetPatternHash & MIAI_ID_MASK);
             });
             if (it == _defensiveMovesPriority[key].patterns.end()) {
-//                qDebug() << "failed to delete " << resetHash << resetX << resetY << pattern << resetPatternHash << currentShift << shift;
                 continue;
             }
 
-//            qDebug() << "deleted " << resetHash << resetX << resetY << pattern << resetPatternHash << currentShift << shift;
             if (key != parentDefensiveHash) _defensiveMovesPriority[key].patterns.erase(it);
             else shouldDeleteKey = true;
-//            qDebug() << "erase pattern from " << resetHash;
 
             unsigned maxPriority = 0;
             for (auto& resetPattern : _defensiveMovesPriority[key].patterns) {
@@ -416,7 +410,6 @@ void BitField::incrementalUpdate(short x, short y, short color) {
                 maxPriority = std::max(MOVE_PATTERNS[moveId].attackPriority, maxPriority);
             }
             _defensiveMovesPriority[key].priority = maxPriority;
-//            qDebug() << "new pattern priority from " << resetHash << maxPriority;
         }
 
         if (shouldDeleteKey) patternIt = _defensiveMovesPriority[parentDefensiveHash].patterns.erase(patternIt);

@@ -125,6 +125,7 @@ struct AIMoveData {
     float selectionScore = 0.f;
 
     unsigned nodeVisits = 0;
+    unsigned moveIndex = 0;
 };
 
 static constexpr short AI_PATTERN_DEFENCES_COUNT = 4;
@@ -145,7 +146,7 @@ struct AIPattern {
     std::array<short, AI_PATTERN_DEFENCES_COUNT> defencePriorities = {0};
 };
 
-static constexpr unsigned PATTERNS_COUNT = 31;
+static constexpr unsigned PATTERNS_COUNT = 35;
 static constexpr std::array<AIPattern, PATTERNS_COUNT> generatePatterns() {
 //    short id = 0;
     std::array<AIPattern, PATTERNS_COUNT> result = {{
@@ -180,6 +181,10 @@ static constexpr std::array<AIPattern, PATTERNS_COUNT> generatePatterns() {
                                                         {28, 7, 3, 1, -4, -1, -5, 4, 14, {0, -1}, {4, 4}},
                                                         {29, 7, 17, 65, -3, -4, -5, 4, 15, {0, -4}, {4, 4}},
                                                         {30, 7, 17, 65, 1, 4, -1, 4, 15, {0, 4}, {4, 4}},
+                                                        {31, 3, 39, 0, 2, -1, 0, 2, 18, {0, 1, 4}, {2, 2, 2}},
+                                                        {32, 3, 39, 0, 1, -2, 0, 2, 18, {0, 3, -1}, {2, 2, 2}},
+                                                        {33, 3, 57, 0, -3, -4, 0, 2, 18, {0, -1, -4}, {2, 2, 2}},
+                                                        {34, 3, 57, 0, -2, -3, 0, 2, 18, {0, 1, -3}, {2, 2, 2}},
     }};
 
     return result;
