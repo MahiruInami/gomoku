@@ -25,11 +25,10 @@ SOURCES += \
     mctstree.cpp
 
 HEADERS += \
-    bitfield.h \
     common.h \
+    bitfield.h \
     debug.h \
     fieldwidget.h \
-    ifield.h \
     mainwindow.h \
     mctsnode.h \
     mctstree.h

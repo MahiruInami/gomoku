@@ -111,7 +111,7 @@ std::vector<AIMoveData> MCTSTree::getBestPlayout(short x, short y) const {
         moveData.color = extractColorData(nodeUserData);
         moveData.nodeVisits = node->getPlayouts();
         moveData.selectionScore = 0.f;
-        moveData.moveIndex = topIndex - node->__depth + 1;
+        moveData.moveIndex = node->__depth - topIndex + 1;
 
         result.push_back(moveData);
 

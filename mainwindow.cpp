@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "fieldwidget.h"
-#include "IField.h"
+#include "common.h"
 #include "bitfield.h"
 #include "mctstree.h"
 #include <QMessageBox>
@@ -179,7 +179,7 @@ void MainWindow::checkAIMove() {
                 bestPosition = node.position;
             }
         }
-        makeMove(FieldMove::getXFromPosition(bestPosition), FieldMove::getYFromPosition(bestPosition));
+        makeMove(extractHashedPositionX(bestPosition), extractHashedPositionY(bestPosition));
     }
 }
 
@@ -195,8 +195,8 @@ void MainWindow::updateField() {
         if (_showBestPlayout) {
             auto aiMoves = _mctsTree->getBestPlayout(_bestPlayoutX, _bestPlayoutY);
             for (auto& aiMove : aiMoves) {
-                aiMove.x = FieldMove::getXFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
-                aiMove.y = FieldMove::getYFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
+                aiMove.x = extractHashedPositionX(aiMove.position) * FieldWidget::IMAGE_SIZE;
+                aiMove.y = extractHashedPositionY(aiMove.position) * FieldWidget::IMAGE_SIZE;
 
                 _fieldView->addAIBestPlayoutMove(aiMove);
                 cells.insert(aiMove.position);
@@ -208,8 +208,8 @@ void MainWindow::updateField() {
                     continue;
                 }
 
-                aiMove.x = FieldMove::getXFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
-                aiMove.y = FieldMove::getYFromPosition(aiMove.position) * FieldWidget::IMAGE_SIZE;
+                aiMove.x = extractHashedPositionX(aiMove.position) * FieldWidget::IMAGE_SIZE;
+                aiMove.y = extractHashedPositionY(aiMove.position) * FieldWidget::IMAGE_SIZE;
 
     //            if (_bitField->getMovePriority(aiMove.position, aiMove.color) > 0) {
     //                aiMove.selectionScore = _bitField->getMovePriority(aiMove.position, aiMove.color);
@@ -224,7 +224,7 @@ void MainWindow::updateField() {
 
     for (short x = 0; x < BOARD_SIZE; ++x) {
         for (short y = 0; y < BOARD_SIZE; ++y) {
-            short hashedPosition = FieldMove::getPositionFromPoint(x, y);
+            short hashedPosition = getHashedPosition(x, y);
             if (cells.find(hashedPosition) != cells.end()) {
                 continue;
             }
@@ -232,8 +232,8 @@ void MainWindow::updateField() {
 //            if (_isGameStarted && (_bitField->getMovePriority(hashedPosition, getCurrentColor()) > 0 || _bitField->getMoveDefencePriority(hashedPosition, getCurrentColor()) > 0 || _bitField->getMoveDefencePriority(hashedPosition, getNextPlayerColor(getCurrentColor())) > 0)) {
 //                AIMoveData moveData;
 //                moveData.position = hashedPosition;
-//                moveData.x = FieldMove::getXFromPosition(hashedPosition) * FieldWidget::IMAGE_SIZE;
-//                moveData.y = FieldMove::getYFromPosition(hashedPosition) * FieldWidget::IMAGE_SIZE;
+//                moveData.x = extractHashedPositionX(hashedPosition) * FieldWidget::IMAGE_SIZE;
+//                moveData.y = extractHashedPositionY(hashedPosition) * FieldWidget::IMAGE_SIZE;
 //                moveData.color = getCurrentColor();
 //                moveData.nodeVisits = _bitField->getMovePriority(hashedPosition, getCurrentColor());
 //                moveData.scores = _bitField->getMoveDefencePriority(hashedPosition, getCurrentColor());
@@ -270,16 +270,16 @@ void MainWindow::onFieldClick(short x, short y, Qt::MouseButton button) {
 //    }
 
     if (_currentMode == MODE::VIEW_TREE) {
-//        short position = FieldMove::getPositionFromPoint(cellX, cellY);
+//        short position = getHashedPosition(cellX, cellY);
 //        if (button == Qt::LeftButton) {
 //            if (_ai->goTreeForward(position)) {
-//                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
+//                _currentPlayer = getNextPlayerColor(_currentPlayer);
 //                delete _field;
 //                _field = new Field(*_ai->getBoardState());
 //            }
 //        } else if (button == Qt::RightButton) {
 //            if (_ai->goBack()) {
-//                _currentPlayer = FieldMove::getNextColor(_currentPlayer);
+//                _currentPlayer = getNextPlayerColor(_currentPlayer);
 //                delete _field;
 //                _field = new Field(*_ai->getBoardState());
 //            }
@@ -307,7 +307,7 @@ void MainWindow::onFieldClick(short x, short y, Qt::MouseButton button) {
     }
 
 //    qDebug() << "_field->placePiece(" << cellX << ", " << cellY << ", " << _currentPlayer << ");";
-//    qDebug() << "_ai->goToNode(" << FieldMove::getPositionFromPoint(cellX, cellY) << ");";
+//    qDebug() << "_ai->goToNode(" << getHashedPosition(cellX, cellY) << ");";
 
     if (!_testMoves.empty()) {
         auto value = _testMoves.front();
@@ -330,7 +330,7 @@ void MainWindow::makeMove(short x, short y) {
     }
 
     _currentAiGames = 0;
-    _currentPlayer = FieldMove::getNextColor(_currentPlayer);
+    _currentPlayer = getNextPlayerColor(_currentPlayer);
 
     updateField();
 
@@ -385,7 +385,7 @@ void MainWindow::checkPattern() {
             if (!field->makeMove(moves[j].first, moves[j].second, fieldColor)) {
                 return;
             }
-            fieldColor = FieldMove::getNextColor(fieldColor);
+            fieldColor = getNextPlayerColor(fieldColor);
         }
     }
 

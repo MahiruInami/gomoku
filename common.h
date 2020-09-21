@@ -22,43 +22,43 @@ static constexpr short BOARD_LENGTH = BOARD_SIZE * BOARD_SIZE;
 static constexpr unsigned long FILLED_ROW_BITS = (1 << BOARD_SIZE) - 1;
 static constexpr std::array<unsigned, 9> FFS_TABLE = {0, 1, 2, 0, 3, 0, 0, 0, 4};
 
-static constexpr short extractPositionX(unsigned long userData) {
+inline static constexpr short extractPositionX(unsigned long userData) {
     return userData & DATA_MOVE_MASK;
 }
 
-static constexpr short extractPositionY(unsigned long userData) {
+inline static constexpr short extractPositionY(unsigned long userData) {
     return (userData >> DATA_MASK_SIZE) & DATA_MOVE_MASK;
 }
 
-static constexpr short extractColorData(unsigned long userData) {
+inline static constexpr short extractColorData(unsigned long userData) {
     return (userData >> COLOR_DATA_MASK_SIZE) & DATA_MOVE_MASK;
 }
 
-static constexpr unsigned long writePositionX(short x, unsigned long userData) {
+inline static constexpr unsigned long writePositionX(short x, unsigned long userData) {
     return (userData & (~DATA_MOVE_MASK)) | x;
 }
 
-static constexpr unsigned long writePositionY(short y, unsigned long userData) {
+inline static constexpr unsigned long writePositionY(short y, unsigned long userData) {
     return (userData & (~(DATA_MOVE_MASK << DATA_MASK_SIZE))) | (y << DATA_MASK_SIZE);
 }
 
-static constexpr unsigned long writeColorData(short color, unsigned long userData) {
+inline static constexpr unsigned long writeColorData(short color, unsigned long userData) {
     return (userData & (~(DATA_MOVE_MASK << COLOR_DATA_MASK_SIZE))) | (color << COLOR_DATA_MASK_SIZE);
 }
 
-static constexpr short getHashedPosition(short x, short y) {
+inline static constexpr short getHashedPosition(short x, short y) {
     return x + y * BOARD_SIZE;
 }
 
-static constexpr short extractHashedPositionX(unsigned pos) {
+inline static constexpr short extractHashedPositionX(unsigned pos) {
     return pos % BOARD_SIZE;
 }
 
-static constexpr short extractHashedPositionY(unsigned pos) {
+inline static constexpr short extractHashedPositionY(unsigned pos) {
     return pos / BOARD_SIZE;
 }
 
-static constexpr short getNextPlayerColor(short color) {
+inline static constexpr short getNextPlayerColor(short color) {
     if (color == -1 || color == 0) {
         return FIRST_MOVE_COLOR;
     }
